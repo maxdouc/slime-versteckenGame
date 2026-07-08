@@ -1,0 +1,15 @@
+# Godot 4 ----------------------------------------------------------
+.godot/
+/android/
+/export/
+*.import
+export_presets.cfg.bak
+
+# OS / editor -------------------------------------------------------
+.DS_Store
+Thumbs.db
+*.swp
+
+# The Godot binary is NOT committed. Each dev installs Godot 4.7 locally.
+Godot_v*_linux.x86_64
+godot.zip
