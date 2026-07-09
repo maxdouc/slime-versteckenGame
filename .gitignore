@@ -13,3 +13,6 @@ Thumbs.db
 # The Godot binary is NOT committed. Each dev installs Godot 4.7 locally.
 Godot_v*_linux.x86_64
 godot.zip
+
+# Local AI/operator identity
+LOCAL_OPERATOR.md
