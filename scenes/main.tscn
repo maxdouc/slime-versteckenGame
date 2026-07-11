@@ -1,20 +1,21 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/lobby_ui.tscn" id="2_lobby_ui"]
 [ext_resource type="PackedScene" path="res://scenes/gray_room.tscn" id="3_gray_room"]
-[ext_resource type="PackedScene" path="res://scenes/player_capsule.tscn" id="4_player_capsule"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3, 10)
+transform = Transform3D(1, 0, 0, 0, 0.791, 0.612, 0, -0.612, 0.791, 0, 9, 11)
 
 [node name="GrayRoom" parent="." instance=ExtResource("3_gray_room")]
 
-[node name="PlayerCapsule" parent="GrayRoom" instance=ExtResource("4_player_capsule")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+[node name="Players" type="Node3D" parent="."]
+
+[node name="PlayerSpawner" type="MultiplayerSpawner" parent="."]
+spawn_path = NodePath("../Players")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
