@@ -69,7 +69,7 @@ This file is ignored by git and must not be committed.
 - feature/project-build-plan
   - Owner: Travis
   - Goal: Add CLAUDE.md, planning/BUILD_PLAN.md, and ignore local operator identity.
-  - Status: In progress
+  - Status: Done
 
 ### Next
 
@@ -89,7 +89,7 @@ Branches:
 | Branch | Owner | Status | Scope |
 |---|---|---|---|
 | feature/travis-workflow-test | Travis | Done | Add workflow diagram and practice branch/commit/push/PR |
-| feature/project-build-plan | Travis | In progress | Add Claude instructions and build plan |
+| feature/project-build-plan | Travis | Done | Add Claude instructions and build plan |
 
 Exit criteria:
 
@@ -111,9 +111,9 @@ Branches:
 | Order | Branch | Owner | Status | Scope |
 |---|---|---|---|---|
 | 1A | feature/enet-lobby-ui | Travis | Next | Minimal host/join UI using current ENet scaffold |
-| 1B | feature/gray-room-capsules | TBD | Not started | Gray room scene and basic player capsule |
-| 1C | feature/basic-player-sync | TBD | Not started | Multiple clients see synced capsule movement |
-| 1D | feature/web-mp-transport | TBD | Not started | Replace ENet test transport with WebRTC/signaling path when ready |
+| 1B | feature/gray-room-capsules | Travis | Not started | Gray room scene and basic player capsule |
+| 1C | feature/basic-player-sync | Travis | Not started | Multiple clients see synced capsule movement |
+| 1D | feature/web-mp-transport | Travis | Not started | Replace ENet test transport with WebRTC/signaling path when ready |
 
 Important:
 
@@ -132,8 +132,8 @@ Branches:
 
 | Branch | Owner | Status | Scope |
 |---|---|---|---|
-| feature/player-movement-camera | TBD | Not started | CharacterBody3D movement and third-person camera |
-| feature/slime-placeholder | TBD | Not started | Replace capsule with simple slime placeholder |
+| feature/player-movement-camera | Maxim | Not started | CharacterBody3D movement and third-person camera |
+| feature/slime-placeholder | Maxim | Not started | Replace capsule with simple slime placeholder |
 
 Exit criteria:
 
@@ -296,6 +296,15 @@ Rules:
 - Branches marked TBD require team decision before work starts.
 - Branches marked Shared require explicit coordination.
 - Do not work on another person's assigned branch unless explicitly told to take it over.
+
+## Parallel work rules
+
+- Dependent branches must be completed sequentially.
+- Two branches may run in parallel only when they do not depend on each other and do not modify the same central files.
+- Before parallel work begins, both Claude Code sessions must list the files they expect to modify.
+- If both branches may modify the same files, the branches must be completed sequentially.
+- Central files such as project.godot, scenes/main.tscn, scripts/main.gd, scripts/game_state.gd and net/net.gd should not be edited by two branches at the same time.
+- For the first phases, work sequentially and use the other developer for review and testing.
 
 ## Standard branch workflow
 
