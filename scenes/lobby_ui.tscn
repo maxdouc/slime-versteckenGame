@@ -9,13 +9,24 @@ anchor_right = 0.0
 anchor_bottom = 0.0
 offset_left = 20.0
 offset_top = 20.0
-offset_right = 320.0
-offset_bottom = 260.0
+offset_right = 360.0
+offset_bottom = 360.0
 script = ExtResource("1_lobby_ui")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="."]
 anchor_right = 1.0
 anchor_bottom = 1.0
+
+[node name="TransportOption" type="OptionButton" parent="VBoxContainer"]
+layout_mode = 2
+
+[node name="AddressLabel" type="Label" parent="VBoxContainer"]
+layout_mode = 2
+autowrap_mode = 2
+
+[node name="AddressInput" type="LineEdit" parent="VBoxContainer"]
+layout_mode = 2
+text = "127.0.0.1"
 
 [node name="HostButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2
@@ -28,10 +39,10 @@ autowrap_mode = 2
 [node name="HSeparator" type="HSeparator" parent="VBoxContainer"]
 layout_mode = 2
 
-[node name="IPInput" type="LineEdit" parent="VBoxContainer"]
+[node name="CodeInput" type="LineEdit" parent="VBoxContainer"]
 layout_mode = 2
-text = "127.0.0.1"
-placeholder_text = "IP address"
+placeholder_text = "Room code, e.g. ABC123"
+max_length = 6
 
 [node name="JoinButton" type="Button" parent="VBoxContainer"]
 layout_mode = 2

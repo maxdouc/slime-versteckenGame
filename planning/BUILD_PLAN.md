@@ -63,19 +63,22 @@ This file is ignored by git and must not be committed.
 - Travis tested Godot boot successfully.
 - Travis completed a workflow test branch with the workflow diagram.
 - Workflow diagram is merged into main.
+- feature/project-build-plan is merged into main.
+- feature/enet-lobby-ui (1A) is merged into main.
+- feature/gray-room-capsules (1B) is merged into main.
+- feature/basic-player-sync (1C) is merged into main.
+- feature/web-mp-transport (1D) is done: WebRTC + signaling server is the primary transport with real room codes; manual two-machine test over Tailscale passed (2026-07-12). Merge into main pending PR review.
+- Phase 1 (Multiplayer foundation) is complete.
 
 ### In progress
 
-- feature/project-build-plan
-  - Owner: Travis
-  - Goal: Add CLAUDE.md, planning/BUILD_PLAN.md, and ignore local operator identity.
-  - Status: Done
+- None. Phase 2 (Player feel) is the current next phase.
 
 ### Next
 
-- feature/enet-lobby-ui
-  - Owner: Travis
-  - Goal: Add a minimal ENet test lobby UI.
+- feature/player-movement-camera
+  - Owner: Maxim
+  - Goal: CharacterBody3D movement and third-person camera (Phase 2).
   - Status: Next
 
 ## Development roadmap
@@ -106,14 +109,16 @@ Exit criteria:
 
 Goal: Prove that multiplayer works before building gameplay.
 
+Status: Completed. All Phase 1 branches are done; the WebRTC transport passed a manual two-machine test over Tailscale (2026-07-12).
+
 Branches:
 
 | Order | Branch | Owner | Status | Scope |
 |---|---|---|---|---|
-| 1A | feature/enet-lobby-ui | Travis | Next | Minimal host/join UI using current ENet scaffold |
-| 1B | feature/gray-room-capsules | Travis | Not started | Gray room scene and basic player capsule |
-| 1C | feature/basic-player-sync | Travis | Not started | Multiple clients see synced capsule movement |
-| 1D | feature/web-mp-transport | Travis | Not started | Replace ENet test transport with WebRTC/signaling path when ready |
+| 1A | feature/enet-lobby-ui | Travis | Done | Minimal host/join UI using current ENet scaffold |
+| 1B | feature/gray-room-capsules | Travis | Done | Gray room scene and basic player capsule |
+| 1C | feature/basic-player-sync | Travis | Done | Multiple clients see synced capsule movement |
+| 1D | feature/web-mp-transport | Travis | Done | Replace ENet test transport with WebRTC/signaling path when ready |
 
 Important:
 
@@ -128,11 +133,13 @@ Important:
 
 Goal: Make basic movement feel good before adding complex mechanics.
 
+Status: Next — this is the current phase.
+
 Branches:
 
 | Branch | Owner | Status | Scope |
 |---|---|---|---|
-| feature/player-movement-camera | Maxim | Not started | CharacterBody3D movement and third-person camera |
+| feature/player-movement-camera | Maxim | Next | CharacterBody3D movement and third-person camera |
 | feature/slime-placeholder | Maxim | Not started | Replace capsule with simple slime placeholder |
 
 Exit criteria:
@@ -328,31 +335,32 @@ During work:
 10. Merge into main.
 11. Both developers pull latest main.
 
-## Current next branch details
+## Current branch details
 
-### feature/enet-lobby-ui
+### feature/web-mp-transport (1D)
 
 Owner: Travis
-Status: Next
+Status: Done — manual two-machine WebRTC test over Tailscale passed (2026-07-12).
 
 Goal:
 
-Create a minimal ENet test lobby UI for the current scaffold.
+Make WebRTC with real room-code signaling the primary transport, behind the
+existing Net seam.
 
 Scope:
 
-- Host button calls Net.host_game().
-- Show generated room code as local test placeholder.
-- IP input field defaults to 127.0.0.1.
-- Join button calls Net.join_game(ip).
-- Show connection status messages.
-- Keep changes small.
+- Headless WebSocket signaling server in /server (GDScript, runs on the Godot binary).
+- WebRTCMultiplayerPeer mesh built from server-relayed offers/answers/ICE candidates.
+- Real room codes issued by the signaling server; join by code in the lobby UI.
+- ENet kept as an explicit developer fallback (lobby dropdown). No automatic
+  fallback: WebRTC/signaling failures show a clear error.
+- Official webrtc-native GDExtension pinned and committed (Windows x86_64 +
+  licenses, see addons/webrtc_native/VERSION.md).
+- Automated smoke test: server/smoke_test.gd.
+- Remote two-PC desktop test runs over Tailscale (no router port forwarding).
 
-Out of scope:
+Out of scope (deferred to the web-export/deployment phase):
 
-- No WebRTC.
-- No signaling server.
-- No addons.
-- No player capsules.
-- No gameplay.
-- No real room-code joining yet.
+- No public hosting of the signaling server, no WSS/TLS, no TURN relay.
+- No web export / browser testing yet.
+- No gameplay changes — scripts/main.gd and scripts/player_capsule.gd stay untouched.
