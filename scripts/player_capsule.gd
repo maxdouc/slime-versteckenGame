@@ -19,6 +19,9 @@ const DECELERATION: float = 30.0  # m/s² braking toward standstill
 const AIR_CONTROL: float = 0.3  # fraction of accel/decel while airborne
 const TURN_WEIGHT: float = 12.0  # visual yaw smoothing, higher = snappier
 
+const SQUASH_AMOUNT: float = 0.12  # max scale offset at full walk speed
+const SQUASH_WEIGHT: float = 8.0  # squash smoothing, higher = snappier
+
 const MOUSE_SENSITIVITY: float = 0.003
 const CAMERA_PITCH_START: float = -0.35  # rad; negative looks down at the player
 const CAMERA_PITCH_MIN: float = -1.2
@@ -28,6 +31,8 @@ const CAMERA_PITCH_MAX: float = 0.35
 @onready var _camera_pivot: Node3D = $CameraPivot
 @onready var _spring_arm: SpringArm3D = $CameraPivot/SpringArm3D
 @onready var _camera: Camera3D = $CameraPivot/SpringArm3D/Camera3D
+
+var _prev_position: Vector3
 
 func _enter_tree() -> void:
 	# The host names each capsule after the owning peer's ID (main.gd).
@@ -41,6 +46,7 @@ func _ready() -> void:
 	var local := is_multiplayer_authority()
 	set_physics_process(local)
 	set_process_unhandled_input(local)
+	_prev_position = global_position
 	if local:
 		_spring_arm.rotation.x = CAMERA_PITCH_START
 		_spring_arm.add_excluded_object(get_rid())
@@ -63,6 +69,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	elif event is InputEventMouseButton and event.pressed:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+## Subtle squash while moving, derived from the position delta instead of
+## velocity so remote copies (fed by the synchronizer, no local physics)
+## squash the same way. Scale is (1+t, 1-t, 1+t) — symmetric around Y, so
+## the synced $Visual yaw stays shear-free and nothing new needs syncing.
+func _process(delta: float) -> void:
+	if delta <= 0.0:
+		return
+	var moved := global_position - _prev_position
+	_prev_position = global_position
+	moved.y = 0.0
+	var t := clampf(moved.length() / delta / WALK_SPEED, 0.0, 1.0) * SQUASH_AMOUNT
+	var target := Vector3(1.0 + t, 1.0 - t, 1.0 + t)
+	_visual.scale = _visual.scale.lerp(target, minf(SQUASH_WEIGHT * delta, 1.0))
 
 func _physics_process(delta: float) -> void:
 	if not is_on_floor():
