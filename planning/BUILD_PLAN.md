@@ -67,13 +67,12 @@ This file is ignored by git and must not be committed.
 - feature/enet-lobby-ui (1A) is merged into main.
 - feature/gray-room-capsules (1B) is merged into main.
 - feature/basic-player-sync (1C) is merged into main.
+- feature/web-mp-transport (1D) is done: WebRTC + signaling server is the primary transport with real room codes; manual two-machine test over Tailscale passed (2026-07-12). Merge into main pending PR review.
+- Phase 1 (Multiplayer foundation) is complete.
 
 ### In progress
 
-- feature/web-mp-transport (1D)
-  - Owner: Travis
-  - Goal: WebRTC + signaling server as primary transport with real room codes; ENet stays as explicit developer fallback.
-  - Status: In progress — implementation done, manual two-machine testing pending.
+- None. Phase 2 (Player feel) is the current next phase.
 
 ### Next
 
@@ -110,6 +109,8 @@ Exit criteria:
 
 Goal: Prove that multiplayer works before building gameplay.
 
+Status: Completed. All Phase 1 branches are done; the WebRTC transport passed a manual two-machine test over Tailscale (2026-07-12).
+
 Branches:
 
 | Order | Branch | Owner | Status | Scope |
@@ -117,7 +118,7 @@ Branches:
 | 1A | feature/enet-lobby-ui | Travis | Done | Minimal host/join UI using current ENet scaffold |
 | 1B | feature/gray-room-capsules | Travis | Done | Gray room scene and basic player capsule |
 | 1C | feature/basic-player-sync | Travis | Done | Multiple clients see synced capsule movement |
-| 1D | feature/web-mp-transport | Travis | In progress | Replace ENet test transport with WebRTC/signaling path when ready |
+| 1D | feature/web-mp-transport | Travis | Done | Replace ENet test transport with WebRTC/signaling path when ready |
 
 Important:
 
@@ -132,11 +133,13 @@ Important:
 
 Goal: Make basic movement feel good before adding complex mechanics.
 
+Status: Next — this is the current phase.
+
 Branches:
 
 | Branch | Owner | Status | Scope |
 |---|---|---|---|
-| feature/player-movement-camera | Maxim | Not started | CharacterBody3D movement and third-person camera |
+| feature/player-movement-camera | Maxim | Next | CharacterBody3D movement and third-person camera |
 | feature/slime-placeholder | Maxim | Not started | Replace capsule with simple slime placeholder |
 
 Exit criteria:
@@ -337,7 +340,7 @@ During work:
 ### feature/web-mp-transport (1D)
 
 Owner: Travis
-Status: In progress — do not mark Done until manual two-machine testing has succeeded.
+Status: Done — manual two-machine WebRTC test over Tailscale passed (2026-07-12).
 
 Goal:
 
