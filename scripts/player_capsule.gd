@@ -1,33 +1,36 @@
 extends CharacterBody3D
-## Networked player capsule with third-person movement and camera (Phase 2,
-## feature/player-movement-camera).
+## Networked player capsule (build step 1C: synced capsules in the gray room).
 ##
-## AUTHORITY — unchanged from Phase 1: each peer owns its capsule (authority =
-## peer ID, taken from the node name the host assigns at spawn), simulates it
-## locally, and the MultiplayerSynchronizer child broadcasts position + facing
-## to everyone else. Client-authoritative on purpose for now; revisit if
-## cheating ever becomes a concern.
+## AUTHORITY — PHASE 1 TEST SETUP, NOT THE FINAL GAMEPLAY DECISION:
+## each peer owns its capsule (authority = peer ID, taken from the node name
+## the host assigns at spawn), simulates it locally, and the
+## MultiplayerSynchronizer child broadcasts position/rotation to everyone
+## else. This client-authoritative model exists only to prove capsule sync
+## over a real network. Revisit authority when real movement lands in
+## feature/player-movement-camera (Phase 2).
 ##
-## Node contract: the CharacterBody3D root never rotates. $Visual yaw-turns
-## toward the movement direction (that rotation is what remote peers see via
-## the synchronizer), $CameraPivot carries the mouse-orbited camera rig and
-## only exists on the locally controlled capsule.
+## The movement below is a THROWAWAY TEST HARNESS for the same reason: it
+## uses only the built-in ui_* actions (arrow keys) so the input map and
+## project.godot stay untouched. Phase 2 replaces it wholesale.
 
-const WALK_SPEED: float = 5.0
-const ACCELERATION: float = 25.0  # m/s² while there is movement input
-const DECELERATION: float = 30.0  # m/s² braking toward standstill
-const AIR_CONTROL: float = 0.3  # fraction of accel/decel while airborne
-const TURN_WEIGHT: float = 12.0  # visual yaw smoothing, higher = snappier
-
-const MOUSE_SENSITIVITY: float = 0.003
-const CAMERA_PITCH_START: float = -0.35  # rad; negative looks down at the player
-const CAMERA_PITCH_MIN: float = -1.2
-const CAMERA_PITCH_MAX: float = 0.35
-
-@onready var _visual: Node3D = $Visual
-@onready var _camera_pivot: Node3D = $CameraPivot
-@onready var _spring_arm: SpringArm3D = $CameraPivot/SpringArm3D
-@onready var _camera: Camera3D = $CameraPivot/SpringArm3D/Camera3D
+const TEST_MOVE_SPEED: float = 4.0
 
 func _enter_tree() -> void:
-	# The host
+	# The host names each capsule after the owning peer's ID (main.gd).
+	var peer_id := str(name).to_int()
+	if peer_id > 0:
+		set_multiplayer_authority(peer_id)
+
+func _ready() -> void:
+	# Remote copies are driven by the synchronizer, never by local physics.
+	set_physics_process(is_multiplayer_authority())
+
+func _physics_process(delta: float) -> void:
+	if not is_on_floor():
+		velocity += get_gravity() * delta
+
+	# TEMP Phase 1 test movement — arrow keys, fixed speed, no camera.
+	var input := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
+	velocity.x = input.x * TEST_MOVE_SPEED
+	velocity.z = input.y * TEST_MOVE_SPEED
+	move_and_slide()
