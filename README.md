@@ -16,7 +16,9 @@ the spec wins. This README covers setup and process only.
 4. Editor > Manage Export Templates > Download (needed for the Web export).
 5. Press F5. The boot scene prints confirmation to the Output panel.
 
-The Godot binary itself is **not** committed (see `.gitignore`).
+The Godot binary itself is **not** committed (see `.gitignore`). The
+`webrtc_native` GDExtension (Windows x86_64) **is** committed and pinned —
+see `addons/webrtc_native/VERSION.md`; nothing extra to install.
 
 ---
 
@@ -24,17 +26,17 @@ The Godot binary itself is **not** committed (see `.gitignore`).
 
 All gameplay talks to Godot's **high-level multiplayer API** (`@rpc`,
 `MultiplayerSynchronizer`). It never touches the transport directly. The
-transport lives behind the `Net` autoload (`net/net.gd`), in one function,
-`_create_peer()`:
+transport lives behind the `Net` autoload: the seam block in `net/net.gd` plus
+its helper `net/webrtc_signaling.gd`:
 
 | Stage | Peer | Notes |
 |---|---|---|
-| Now (desktop 2-PC test) | `ENetMultiplayerPeer` | built in, no addon — lets us verify multiplayer today |
-| Web build | `WebRTCMultiplayerPeer` | needs `godot-webrtc` GDExtension in `/addons` + signaling server in `/server` |
+| **Primary (since 1D)** | `WebRTCMultiplayerPeer` | mesh + WebSocket signaling server in `/server`; real room codes. Desktop/editor needs the pinned `addons/webrtc_native` GDExtension (committed); browsers use built-in WebRTC |
+| Developer fallback | `ENetMultiplayerPeer` | explicit dropdown choice in the lobby, direct IP. **No automatic fallback** — WebRTC failures show an error instead |
 | Steam (V2) | `SteamMultiplayerPeer` | via GodotSteam addon |
 
-Swapping transports = editing `_create_peer()`. Nothing else changes. Keep it
-that way.
+Swapping transports = editing the seam in `/net`. Nothing else changes. Keep it
+that way. Running/testing the signaling server: see `server/README.md`.
 
 ---
 
