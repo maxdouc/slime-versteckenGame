@@ -40,6 +40,11 @@ extends CharacterBody3D
 ## through the 3D eyedropper (SPEC.md 9.3) — into the brush and the HUD.
 ## UI clicks never paint: consumed events skip _unhandled_input, and queued
 ## strokes are dropped while the cursor hovers any control.
+##
+## BASE COAT (feature/grundieren-button): Grundieren (HUD button or G) covers
+## the whole prop with the current brush color in one click — SPEC.md 9.3
+## calls this mandatory for the rotation loop. Alles-Löschen (HUD button)
+## resets to neutral white but keeps the form.
 
 const PlayerForms := preload("res://scripts/player_forms.gd")
 const PropPainter := preload("res://scripts/paint/prop_painter.gd")
@@ -113,6 +118,8 @@ func _ready() -> void:
 		_paint_hud.name = "PaintHud"
 		add_child(_paint_hud)
 		_paint_hud.color_changed.connect(_on_paint_color_picked)
+		_paint_hud.grundieren_pressed.connect(_on_grundieren)
+		_paint_hud.clear_pressed.connect(_on_clear_paint)
 		_paint_hud.set_color(painter.brush_color)
 	else:
 		# Remote copies need no camera rig; their facing arrives via the
@@ -153,6 +160,9 @@ func _handle_paint_mode_input(event: InputEvent) -> bool:
 		return true
 	if event.is_action_pressed("eyedropper"):
 		_eyedrop_pending = true
+		return true
+	if event.is_action_pressed("grundieren"):
+		_on_grundieren()
 		return true
 	if event is InputEventMouseButton:
 		match event.button_index:
@@ -203,6 +213,17 @@ func _exit_paint_mode() -> void:
 
 func _on_paint_color_picked(color: Color) -> void:
 	painter.brush_color = color
+
+## One-click base coat with the current brush color (SPEC.md 9.3 Grundieren —
+## the mandatory speed tool for the 60-s rotation loop: sample, prime, go).
+func _on_grundieren() -> void:
+	if form_id == PlayerForms.SLIME:
+		return
+	painter.fill(painter.brush_color)
+
+## Alles-Löschen: back to neutral white, form and binding stay.
+func _on_clear_paint() -> void:
+	painter.clear_paint()
 
 ## Raycasts must not run inside input callbacks (the physics space may be
 ## locked there); queue the screen point and resolve it next physics tick.
@@ -367,6 +388,8 @@ static func _ensure_input_actions() -> void:
 		"paint_mode": [KEY_P],
 		# 3D eyedropper in paint mode. Q, not E — E is the future Fressen key.
 		"eyedropper": [KEY_Q],
+		# One-click base coat in paint mode (SPEC.md 9.3 Grundieren).
+		"grundieren": [KEY_G],
 	}
 	for action in bindings:
 		if InputMap.has_action(action):

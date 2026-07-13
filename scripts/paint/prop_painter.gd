@@ -47,10 +47,19 @@ func bind_prop(mesh_instance: MeshInstance3D) -> void:
 ## Back to "no paintable prop": restore the pristine shared material on the
 ## mesh (if it still exists and still shows our paint) and drop all state.
 func unbind() -> void:
+	_reset_state()
+	_mesh_instance = null
+
+## Alles-Löschen (SPEC.md 9.3): back to neutral white. A full reset to the
+## lazy unpainted state — the pristine shared material returns and the paint
+## memory is released — but the prop stays bound, so painting can continue.
+func clear_paint() -> void:
+	_reset_state()
+
+func _reset_state() -> void:
 	if _material != null and is_instance_valid(_mesh_instance) \
 			and _mesh_instance.get_surface_override_material(0) == _material:
 		_mesh_instance.set_surface_override_material(0, _original_override)
-	_mesh_instance = null
 	_original_override = null
 	_image = null
 	_texture = null
@@ -90,6 +99,15 @@ func paint_world_point(world_point: Vector3) -> bool:
 		return false
 	stamp_uv(uv, brush_color)
 	return true
+
+## One-click base coat (SPEC.md 9.3 Grundieren — mandatory: sample the floor,
+## prime, move on): cover EVERY pixel with `color`. Deterministic like
+## stamp_uv, and it obsoletes all earlier strokes — the event-sync branch
+## compacts its history on this.
+func fill(color: Color) -> void:
+	_ensure_paint_target()
+	_image.fill(Color(color.r, color.g, color.b, 1.0))
+	_texture.update(_image)
 
 ## Deterministic core: stamp a filled BRUSH_RADIUS_PX circle of `color` at
 ## `uv` (fractions of the texture, clamped to the edges).
