@@ -67,18 +67,21 @@ This file is ignored by git and must not be committed.
 - feature/enet-lobby-ui (1A) is merged into main.
 - feature/gray-room-capsules (1B) is merged into main.
 - feature/basic-player-sync (1C) is merged into main.
-- feature/web-mp-transport (1D) is done: WebRTC + signaling server is the primary transport with real room codes; manual two-machine test over Tailscale passed (2026-07-12). Merge into main pending PR review.
-- Phase 1 (Multiplayer foundation) is complete.
+- feature/web-mp-transport (1D) is merged into main: WebRTC + signaling server is the primary transport with real room codes; manual two-machine test over Tailscale passed (2026-07-12).
+- Phase 1 (Multiplayer foundation) is complete and fully merged into main.
+- feature/player-movement-camera is merged into main.
+- feature/slime-placeholder is merged into main.
+- Phase 2 (Player feel) is complete; exit criteria tested successfully.
 
 ### In progress
 
-- None. Phase 2 (Player feel) is the current next phase.
+- None. Phase 3 (Transform system) is the current next phase.
 
 ### Next
 
-- feature/player-movement-camera
-  - Owner: Maxim
-  - Goal: CharacterBody3D movement and third-person camera (Phase 2).
+- feature/transform-white-props
+  - Owner: Travis
+  - Goal: Transform from slime into white placeholder props (Phase 3).
   - Status: Next
 
 ## Development roadmap
@@ -133,16 +136,16 @@ Important:
 
 Goal: Make basic movement feel good before adding complex mechanics.
 
-Status: Next — this is the current phase.
+Status: Completed. Both Phase 2 branches are merged into main; exit criteria tested successfully.
 
 Branches:
 
 | Branch | Owner | Status | Scope |
 |---|---|---|---|
-| feature/player-movement-camera | Maxim | Next | CharacterBody3D movement and third-person camera |
-| feature/slime-placeholder | Maxim | Not started | Replace capsule with simple slime placeholder |
+| feature/player-movement-camera | Maxim | Done | CharacterBody3D movement and third-person camera |
+| feature/slime-placeholder | Maxim | Done | Replace capsule with simple slime placeholder |
 
-Exit criteria:
+Exit criteria (tested successfully):
 
 - Player can move comfortably.
 - Camera follows cleanly.
@@ -154,13 +157,15 @@ Exit criteria:
 
 Goal: Let players transform from slime into white placeholder props.
 
+Status: Next — this is the current phase.
+
 Branches:
 
 | Branch | Owner | Status | Scope |
 |---|---|---|---|
-| feature/transform-white-props | TBD | Not started | Transform into white props |
-| feature/prop-speed-tiers | TBD | Not started | Slime 100%, small 80%, medium 60%, large 40% |
-| feature/network-transform-state | TBD | Not started | Other players see transform state |
+| feature/transform-white-props | Travis | Next | Transform into white props |
+| feature/prop-speed-tiers | Travis | Not started | Slime 100%, small 80%, medium 60%, large 40% |
+| feature/network-transform-state | Travis | Not started | Other players see transform state |
 
 Rules:
 
@@ -336,6 +341,28 @@ During work:
 11. Both developers pull latest main.
 
 ## Current branch details
+
+### feature/transform-white-props
+
+Owner: Travis
+Status: Next
+
+Goal:
+
+Let a player transform from slime into a white placeholder prop and back (Phase 3, SPEC.md 9.1).
+
+Scope:
+
+- Small set of simple white placeholder props (e.g., one large, one medium, one small shape).
+- Player input to transform into a prop form and to transform back to slime at any time.
+- Props always spawn neutral white — never colored, never textured.
+- Works locally in the existing gray room with the current slime placeholder.
+
+Out of scope (separate branches):
+
+- No speed tiers per form (feature/prop-speed-tiers).
+- No network sync of transform state (feature/network-transform-state).
+- No paint system (Phase 4).
 
 ### feature/web-mp-transport (1D)
 
