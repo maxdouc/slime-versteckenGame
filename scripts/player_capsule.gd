@@ -33,9 +33,18 @@ extends CharacterBody3D
 ## _physics_process (input events only queue screen points — the physics space
 ## may be locked during input callbacks). Local-only for now; the stroke event
 ## sync is a later Phase 4 branch.
+##
+## COLOR (feature/eyedropper-and-colorpicker): the local player gets a
+## PaintHud (color wheel + HSV, shown in paint mode) whose picks drive
+## painter.brush_color, and Q samples the aimed surface's exact source color
+## through the 3D eyedropper (SPEC.md 9.3) — into the brush and the HUD.
+## UI clicks never paint: consumed events skip _unhandled_input, and queued
+## strokes are dropped while the cursor hovers any control.
 
 const PlayerForms := preload("res://scripts/player_forms.gd")
 const PropPainter := preload("res://scripts/paint/prop_painter.gd")
+const Eyedropper := preload("res://scripts/paint/eyedropper.gd")
+const PaintHudScene := preload("res://scenes/paint_hud.tscn")
 
 const WALK_SPEED: float = 5.0  # slime base speed; forms scale it — max_speed()
 const ACCELERATION: float = 25.0  # m/s² while there is movement input
@@ -73,6 +82,8 @@ var _paint_mode := false
 var _paint_dragging := false
 var _orbit_dragging := false
 var _pending_paint := PackedVector2Array()  # screen points waiting for the physics tick
+var _eyedrop_pending := false  # Q pressed; resolves next physics tick
+var _paint_hud: CanvasLayer  # local player only (like the camera rig)
 
 ## Current form: PlayerForms.SLIME or a PlayerForms.PROPS key. Replicated via
 ## the MultiplayerSynchronizer (on change + spawn state); remote copies and
@@ -98,6 +109,11 @@ func _ready() -> void:
 		_spring_arm.add_excluded_object(get_rid())
 		_camera.current = true
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		_paint_hud = PaintHudScene.instantiate()
+		_paint_hud.name = "PaintHud"
+		add_child(_paint_hud)
+		_paint_hud.color_changed.connect(_on_paint_color_picked)
+		_paint_hud.set_color(painter.brush_color)
 	else:
 		# Remote copies need no camera rig; their facing arrives via the
 		# synchronizer as $Visual rotation.
@@ -135,6 +151,9 @@ func _handle_paint_mode_input(event: InputEvent) -> bool:
 	if event.is_action_pressed("paint_mode") or event.is_action_pressed("ui_cancel"):
 		_exit_paint_mode()
 		return true
+	if event.is_action_pressed("eyedropper"):
+		_eyedrop_pending = true
+		return true
 	if event is InputEventMouseButton:
 		match event.button_index:
 			MOUSE_BUTTON_LEFT:
@@ -168,33 +187,59 @@ func _enter_paint_mode() -> void:
 		return
 	_paint_mode = true
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	if _paint_hud != null:
+		_paint_hud.set_color(painter.brush_color)
+		_paint_hud.visible = true
 
 func _exit_paint_mode() -> void:
 	_paint_mode = false
 	_paint_dragging = false
 	_orbit_dragging = false
 	_pending_paint.clear()
+	_eyedrop_pending = false
+	if _paint_hud != null:
+		_paint_hud.visible = false
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+func _on_paint_color_picked(color: Color) -> void:
+	painter.brush_color = color
 
 ## Raycasts must not run inside input callbacks (the physics space may be
 ## locked there); queue the screen point and resolve it next physics tick.
+## Points over any UI control are dropped — clicking the color picker must
+## never paint through it.
 func _queue_paint(screen_pos: Vector2) -> void:
+	if get_viewport().gui_get_hovered_control() != null:
+		return
 	if _pending_paint.size() < PAINT_QUEUE_MAX:
 		_pending_paint.append(screen_pos)
 
-## Resolve queued paint points: cursor ray into the world; only hits on the
-## OWN body (whose collision volume is the current prop form) paint.
+## Resolve queued paint points and eyedrops. Strokes only land on the OWN body
+## (whose collision volume is the current prop form); the eyedropper samples
+## ANY surface under the cursor (SPEC.md 9.3).
 func _drain_paint_queue() -> void:
-	if _pending_paint.is_empty():
+	if _pending_paint.is_empty() and not _eyedrop_pending:
 		return
 	var space := get_world_3d().direct_space_state
 	for screen_pos in _pending_paint:
-		var origin := _camera.project_ray_origin(screen_pos)
-		var target := origin + _camera.project_ray_normal(screen_pos) * PAINT_RAY_LENGTH
-		var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(origin, target))
+		var hit := _cursor_raycast(space, screen_pos)
 		if not hit.is_empty() and hit.collider == self:
 			painter.paint_world_point(hit.position)
 	_pending_paint.clear()
+	if _eyedrop_pending:
+		_eyedrop_pending = false
+		var sample_hit := _cursor_raycast(space, get_viewport().get_mouse_position())
+		if not sample_hit.is_empty():
+			var sampled = Eyedropper.sample_color(sample_hit.collider, sample_hit.position)
+			if sampled is Color:
+				painter.brush_color = sampled
+				if _paint_hud != null:
+					_paint_hud.set_color(sampled)
+
+func _cursor_raycast(space: PhysicsDirectSpaceState3D, screen_pos: Vector2) -> Dictionary:
+	var origin := _camera.project_ray_origin(screen_pos)
+	var target := origin + _camera.project_ray_normal(screen_pos) * PAINT_RAY_LENGTH
+	return space.intersect_ray(PhysicsRayQueryParameters3D.create(origin, target))
 
 ## Subtle squash while moving, derived from the position delta instead of
 ## velocity so remote copies (fed by the synchronizer, no local physics)
@@ -320,6 +365,8 @@ static func _ensure_input_actions() -> void:
 		# Paint mode toggle (Phase 4). P as in Pinsel; E stays reserved for the
 		# Fressen interaction (SPEC.md 7).
 		"paint_mode": [KEY_P],
+		# 3D eyedropper in paint mode. Q, not E — E is the future Fressen key.
+		"eyedropper": [KEY_Q],
 	}
 	for action in bindings:
 		if InputMap.has_action(action):
