@@ -44,6 +44,20 @@ func bind_prop(mesh_instance: MeshInstance3D) -> void:
 	unbind()
 	_mesh_instance = mesh_instance
 
+## Re-target onto a new mesh KEEPING the paint state (null detaches). Used by
+## the capsule's _apply_form since the event-sync branch: the paint LIFETIME
+## belongs to paint_epoch there — network events may arrive before or after
+## the form change itself, so the visual rebind must not wipe anything.
+func rebind_prop(mesh_instance: MeshInstance3D) -> void:
+	if _material != null and is_instance_valid(_mesh_instance) \
+			and _mesh_instance.get_surface_override_material(0) == _material:
+		_mesh_instance.set_surface_override_material(0, _original_override)
+	_mesh_instance = mesh_instance
+	_original_override = null
+	_material = null
+	if _image != null and _mesh_instance != null:
+		_ensure_paint_target()  # existing paint follows onto the new mesh
+
 ## Back to "no paintable prop": restore the pristine shared material on the
 ## mesh (if it still exists and still shows our paint) and drop all state.
 func unbind() -> void:
@@ -89,12 +103,19 @@ func color_at_uv(uv: Vector2) -> Color:
 	var py := clampi(int(uv.y * TEXTURE_SIZE), 0, TEXTURE_SIZE - 1)
 	return _image.get_pixel(px, py)
 
-## Paint one brush stamp where a raycast hit the bound mesh. Returns false when
-## nothing is bound or the point cannot be mapped to a UV.
-func paint_world_point(world_point: Vector3) -> bool:
+## UV under a raycast hit on the bound mesh (NO_UV when unbound or
+## unmappable). The capsule turns this into a stroke EVENT — since the
+## event-sync branch, live painting never stamps directly.
+func world_point_to_uv(world_point: Vector3) -> Vector2:
 	if _mesh_instance == null or not is_instance_valid(_mesh_instance):
-		return false
-	var uv := MeshUvLookup.uv_at_world_point(_mesh_instance, world_point)
+		return MeshUvLookup.NO_UV
+	return MeshUvLookup.uv_at_world_point(_mesh_instance, world_point)
+
+## Paint one brush stamp where a raycast hit the bound mesh. Returns false when
+## nothing is bound or the point cannot be mapped to a UV. Local-only helper —
+## the networked path goes uv -> PaintSync event -> stamp_uv on every peer.
+func paint_world_point(world_point: Vector3) -> bool:
+	var uv := world_point_to_uv(world_point)
 	if uv.x < 0.0:
 		return false
 	stamp_uv(uv, brush_color)

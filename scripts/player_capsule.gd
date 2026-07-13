@@ -45,6 +45,15 @@ extends CharacterBody3D
 ## the whole prop with the current brush color in one click — SPEC.md 9.3
 ## calls this mandatory for the rotation loop. Alles-Löschen (HUD button)
 ## resets to neutral white but keeps the form.
+##
+## EVENT SYNC (feature/paint-event-sync): every local paint action goes
+## through $PaintSync as a compact event (never a texture — SPEC.md 9.3) and
+## is applied identically on every peer, owner included (call_local).
+## paint_epoch counts paint lifetimes: the owner bumps it on every form
+## change, it replicates on change + spawn state, and whoever learns of a
+## newer epoch first (synchronizer or event) wipes the old paint — that is
+## how strokes racing a transform stay consistent. _apply_form therefore
+## REBINDS the painter without wiping; only epochs wipe.
 
 const PlayerForms := preload("res://scripts/player_forms.gd")
 const PropPainter := preload("res://scripts/paint/prop_painter.gd")
@@ -75,6 +84,7 @@ const PAINT_QUEUE_MAX: int = 32  # queued stamps per physics tick (mouse-move bu
 @onready var _camera_pivot: Node3D = $CameraPivot
 @onready var _spring_arm: SpringArm3D = $CameraPivot/SpringArm3D
 @onready var _camera: Camera3D = $CameraPivot/SpringArm3D/Camera3D
+@onready var _paint_sync: Node = $PaintSync
 
 var _prev_position: Vector3
 
@@ -95,6 +105,13 @@ var _paint_hud: CanvasLayer  # local player only (like the camera rig)
 ## late joiners apply it through the setter.
 var form_id: String = PlayerForms.SLIME:
 	set = _set_form_id
+
+## Paint lifetime counter: the OWNER bumps it on every form change; replicated
+## on change + spawn state, and also carried by every paint event. Whoever
+## learns of a newer epoch first wipes the old paint, so the stroke-vs-
+## transform ordering race always converges. Never decreases.
+var paint_epoch: int = 0:
+	set = _set_paint_epoch
 
 func _enter_tree() -> void:
 	# The host names each capsule after the owning peer's ID (main.gd).
@@ -219,11 +236,13 @@ func _on_paint_color_picked(color: Color) -> void:
 func _on_grundieren() -> void:
 	if form_id == PlayerForms.SLIME:
 		return
-	painter.fill(painter.brush_color)
+	_paint_sync.local_fill(painter.brush_color)
 
 ## Alles-Löschen: back to neutral white, form and binding stay.
 func _on_clear_paint() -> void:
-	painter.clear_paint()
+	if form_id == PlayerForms.SLIME:
+		return
+	_paint_sync.local_clear()
 
 ## Raycasts must not run inside input callbacks (the physics space may be
 ## locked there); queue the screen point and resolve it next physics tick.
@@ -245,7 +264,9 @@ func _drain_paint_queue() -> void:
 	for screen_pos in _pending_paint:
 		var hit := _cursor_raycast(space, screen_pos)
 		if not hit.is_empty() and hit.collider == self:
-			painter.paint_world_point(hit.position)
+			var uv: Vector2 = painter.world_point_to_uv(hit.position)
+			if uv.x >= 0.0:
+				_paint_sync.local_stroke(uv, painter.brush_color)
 	_pending_paint.clear()
 	if _eyedrop_pending:
 		_eyedrop_pending = false
@@ -337,13 +358,28 @@ func _set_form_id(value: String) -> void:
 		return
 	form_id = value
 	if is_node_ready():
+		if is_multiplayer_authority():
+			paint_epoch += 1  # owner: a new form is a new paint lifetime (wipes)
 		_apply_form()  # before ready, _ready()'s _apply_form picks the value up
+
+## Single write path for the epoch — owner bumps, synchronizer, and inbound
+## paint events all land here. An increase wipes the paint (props always
+## spawn white, SPEC.md 9.1) and releases the event history; regressions are
+## stale packets and ignored.
+func _set_paint_epoch(value: int) -> void:
+	if value <= paint_epoch:
+		return
+	paint_epoch = value
+	painter.clear_paint()
+	if _paint_sync != null:  # spawn state can arrive before @onready resolves
+		_paint_sync.reset_history()
 
 ## Make the tree match form_id: exactly one visible form — the slime meshes OR
 ## one prop scene under $Visual/PropAnchor — plus the registry's collision
 ## volume. Stale prop visuals are detached immediately so no frame ever shows
-## two forms at once. The painter re-targets on every change, which is what
-## wipes the paint on ANY form change (props always spawn white, SPEC.md 9.1).
+## two forms at once. The painter REBINDS without wiping: the paint lifetime
+## belongs to paint_epoch (wiped there — on the owner the bump precedes this,
+## on replicas epoch and form may arrive in either order).
 func _apply_form() -> void:
 	for stale in _prop_anchor.get_children():
 		_prop_anchor.remove_child(stale)
@@ -351,11 +387,11 @@ func _apply_form() -> void:
 	var is_slime := form_id == PlayerForms.SLIME
 	_slime_visual.visible = is_slime
 	if is_slime:
-		painter.unbind()
+		painter.rebind_prop(null)
 	else:
 		var prop: Node = load(PlayerForms.scene_path(form_id)).instantiate()
 		_prop_anchor.add_child(prop)
-		painter.bind_prop(_find_prop_mesh(prop))
+		painter.rebind_prop(_find_prop_mesh(prop))
 	_collision.shape = PlayerForms.collision_shape(form_id)
 	_collision.position = PlayerForms.collision_origin(form_id)
 
