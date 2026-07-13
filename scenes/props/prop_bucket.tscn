@@ -1,0 +1,17 @@
+[gd_scene load_steps=3 format=3]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_bucket"]
+top_radius = 0.32
+bottom_radius = 0.26
+height = 0.55
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_white"]
+albedo_color = Color(1, 1, 1, 1)
+roughness = 0.55
+
+[node name="PropBucket" type="Node3D"]
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.275, 0)
+mesh = SubResource("CylinderMesh_bucket")
+surface_material_override/0 = SubResource("StandardMaterial3D_white")

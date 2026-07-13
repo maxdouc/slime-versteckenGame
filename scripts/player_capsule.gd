@@ -1,6 +1,6 @@
 extends CharacterBody3D
-## Networked player capsule with third-person movement and camera (Phase 2,
-## feature/player-movement-camera).
+## Networked player capsule: third-person movement + camera (Phase 2) and the
+## slime <-> white-prop transform system (Phase 3, feature/transform-white-props).
 ##
 ## AUTHORITY — unchanged from Phase 1: each peer owns its capsule (authority =
 ## peer ID, taken from the node name the host assigns at spawn), simulates it
@@ -10,8 +10,18 @@ extends CharacterBody3D
 ##
 ## Node contract: the CharacterBody3D root never rotates. $Visual yaw-turns
 ## toward the movement direction (that rotation is what remote peers see via
-## the synchronizer), $CameraPivot carries the mouse-orbited camera rig and
+## the synchronizer) and holds exactly one visible form at a time — the slime
+## meshes in $Visual/SlimeVisual OR one prop scene instanced under
+## $Visual/PropAnchor. $CameraPivot carries the mouse-orbited camera rig and
 ## only exists on the locally controlled capsule.
+##
+## FORMS: form_id names the current form (PlayerForms registry). Transforming
+## swaps visuals + collision volume only; props always spawn neutral white
+## (SPEC.md 9.1). TEMPORARY debug keys until the real selection UX exists:
+## 1 = slime, 2 = small, 3 = medium, 4 = large. Local-only in this branch —
+## replication of form_id is feature/network-transform-state.
+
+const PlayerForms := preload("res://scripts/player_forms.gd")
 
 const WALK_SPEED: float = 5.0
 const ACCELERATION: float = 25.0  # m/s² while there is movement input
@@ -28,11 +38,18 @@ const CAMERA_PITCH_MIN: float = -1.2
 const CAMERA_PITCH_MAX: float = 0.35
 
 @onready var _visual: Node3D = $Visual
+@onready var _slime_visual: Node3D = $Visual/SlimeVisual
+@onready var _prop_anchor: Node3D = $Visual/PropAnchor
+@onready var _collision: CollisionShape3D = $CollisionShape3D
 @onready var _camera_pivot: Node3D = $CameraPivot
 @onready var _spring_arm: SpringArm3D = $CameraPivot/SpringArm3D
 @onready var _camera: Camera3D = $CameraPivot/SpringArm3D/Camera3D
 
 var _prev_position: Vector3
+
+## Current form: PlayerForms.SLIME or a PlayerForms.PROPS key. Local-only for
+## now; feature/network-transform-state will replicate it.
+var form_id: String = PlayerForms.SLIME
 
 func _enter_tree() -> void:
 	# The host names each capsule after the owning peer's ID (main.gd).
@@ -56,6 +73,7 @@ func _ready() -> void:
 		# Remote copies need no camera rig; their facing arrives via the
 		# synchronizer as $Visual rotation.
 		_camera_pivot.queue_free()
+	_apply_form()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -69,6 +87,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	elif event is InputEventMouseButton and event.pressed:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	elif event.is_action_pressed("form_slime"):
+		transform_to_slime()
+	elif event.is_action_pressed("form_small"):
+		transform_to_prop(PlayerForms.first_prop_of_size(PlayerForms.Size.SMALL))
+	elif event.is_action_pressed("form_medium"):
+		transform_to_prop(PlayerForms.first_prop_of_size(PlayerForms.Size.MEDIUM))
+	elif event.is_action_pressed("form_large"):
+		transform_to_prop(PlayerForms.first_prop_of_size(PlayerForms.Size.LARGE))
 
 ## Subtle squash while moving, derived from the position delta instead of
 ## velocity so remote copies (fed by the synchronizer, no local physics)
@@ -106,6 +132,41 @@ func _physics_process(delta: float) -> void:
 
 	move_and_slide()
 
+## Transform into a prop form (a PlayerForms.PROPS key). The prop spawns
+## neutral white no matter what the slime looks like — SPEC.md 9.1's anti-P2W
+## rule: the prop scenes own their white material, nothing is inherited.
+func transform_to_prop(prop_id: String) -> void:
+	if not PlayerForms.is_prop(prop_id):
+		push_warning("Unknown prop form '%s' — keeping form '%s'." % [prop_id, form_id])
+		return
+	if form_id == prop_id:
+		return
+	form_id = prop_id
+	_apply_form()
+
+## Back to slime, allowed at any time (SPEC.md 9.1). Once the paint system
+## exists (Phase 4), returning to slime is also what wipes the paint job.
+func transform_to_slime() -> void:
+	if form_id == PlayerForms.SLIME:
+		return
+	form_id = PlayerForms.SLIME
+	_apply_form()
+
+## Make the tree match form_id: exactly one visible form — the slime meshes OR
+## one prop scene under $Visual/PropAnchor — plus the registry's collision
+## volume. Stale prop visuals are detached immediately so no frame ever shows
+## two forms at once.
+func _apply_form() -> void:
+	for stale in _prop_anchor.get_children():
+		_prop_anchor.remove_child(stale)
+		stale.free()
+	var is_slime := form_id == PlayerForms.SLIME
+	_slime_visual.visible = is_slime
+	if not is_slime:
+		_prop_anchor.add_child(load(PlayerForms.scene_path(form_id)).instantiate())
+	_collision.shape = PlayerForms.collision_shape(form_id)
+	_collision.position = PlayerForms.collision_origin(form_id)
+
 ## WASD + arrow keys, registered at runtime: project.godot is a central file
 ## no feature branch may touch, so its stock input map stays empty. Physical
 ## keycodes keep WASD in place on non-QWERTY layouts (e.g. German QWERTZ).
@@ -115,6 +176,12 @@ static func _ensure_input_actions() -> void:
 		"move_back": [KEY_S, KEY_DOWN],
 		"move_left": [KEY_A, KEY_LEFT],
 		"move_right": [KEY_D, KEY_RIGHT],
+		# TEMPORARY Phase 3 debug keys — form selection by size class. The real
+		# unlock-driven selection UX arrives with the eat progression (SPEC.md 8).
+		"form_slime": [KEY_1],
+		"form_small": [KEY_2],
+		"form_medium": [KEY_3],
+		"form_large": [KEY_4],
 	}
 	for action in bindings:
 		if InputMap.has_action(action):
