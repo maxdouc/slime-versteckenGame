@@ -19,9 +19,11 @@ extends CharacterBody3D
 ## swaps visuals + collision volume and scales the top speed (SPEC.md 9.2:
 ## slime 100 %, small 80 %, medium 60 %, large 40 % — see max_speed()); props
 ## always spawn neutral white (SPEC.md 9.1). TEMPORARY debug keys until the
-## real selection UX exists:
-## 1 = slime, 2 = small, 3 = medium, 4 = large. Local-only in this branch —
-## replication of form_id is feature/network-transform-state.
+## real selection UX exists: 1 = slime, 2 = small, 3 = medium, 4 = large.
+## form_id replicates through the MultiplayerSynchronizer — on change plus
+## spawn state, so every peer (late joiners included) shows the same form.
+## Only the owning peer may transform itself; _set_form_id is the single
+## write path shared by local input and the synchronizer.
 
 const PlayerForms := preload("res://scripts/player_forms.gd")
 
@@ -49,9 +51,11 @@ const CAMERA_PITCH_MAX: float = 0.35
 
 var _prev_position: Vector3
 
-## Current form: PlayerForms.SLIME or a PlayerForms.PROPS key. Local-only for
-## now; feature/network-transform-state will replicate it.
-var form_id: String = PlayerForms.SLIME
+## Current form: PlayerForms.SLIME or a PlayerForms.PROPS key. Replicated via
+## the MultiplayerSynchronizer (on change + spawn state); remote copies and
+## late joiners apply it through the setter.
+var form_id: String = PlayerForms.SLIME:
+	set = _set_form_id
 
 func _enter_tree() -> void:
 	# The host names each capsule after the owning peer's ID (main.gd).
@@ -145,22 +149,31 @@ func max_speed() -> float:
 ## Transform into a prop form (a PlayerForms.PROPS key). The prop spawns
 ## neutral white no matter what the slime looks like — SPEC.md 9.1's anti-P2W
 ## rule: the prop scenes own their white material, nothing is inherited.
+## Authority-only: remote copies change form exclusively via the synchronizer.
 func transform_to_prop(prop_id: String) -> void:
-	if not PlayerForms.is_prop(prop_id):
-		push_warning("Unknown prop form '%s' — keeping form '%s'." % [prop_id, form_id])
-		return
-	if form_id == prop_id:
+	if not is_multiplayer_authority():
 		return
 	form_id = prop_id
-	_apply_form()
 
 ## Back to slime, allowed at any time (SPEC.md 9.1). Once the paint system
 ## exists (Phase 4), returning to slime is also what wipes the paint job.
 func transform_to_slime() -> void:
-	if form_id == PlayerForms.SLIME:
+	if not is_multiplayer_authority():
 		return
 	form_id = PlayerForms.SLIME
-	_apply_form()
+
+## Single write path for the form — local input and inbound synchronizer
+## values both land here. Unknown ids (bad input, bad packet) are rejected so
+## a broken peer can never blank out someone's visuals.
+func _set_form_id(value: String) -> void:
+	if not PlayerForms.is_valid(value):
+		push_warning("Ignoring unknown form id '%s' — keeping '%s'." % [value, form_id])
+		return
+	if value == form_id:
+		return
+	form_id = value
+	if is_node_ready():
+		_apply_form()  # before ready, _ready()'s _apply_form picks the value up
 
 ## Make the tree match form_id: exactly one visible form — the slime meshes OR
 ## one prop scene under $Visual/PropAnchor — plus the registry's collision

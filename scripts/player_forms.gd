@@ -15,7 +15,9 @@ extends RefCounted
 ## for real assets later must not touch the transform logic, so everything
 ## gameplay needs (size class, collision volume) lives HERE, not in the scenes.
 ##
-## Networked form state arrives in feature/network-transform-state.
+## Form ids are deliberately short strings: player_capsule.gd replicates
+## form_id through its MultiplayerSynchronizer (on change only), and the
+## paint system will key its stroke events off the same ids later.
 
 ## Form id of the untransformed slime. Prop form ids are the PROPS keys.
 const SLIME := "slime"
@@ -65,9 +67,6 @@ const SPEED_MULTIPLIERS := {
 ## Shape3D resources are built once per form and shared by every player —
 ## they are read-only at runtime, so sharing is safe and cheap.
 static var _shape_cache: Dictionary = {}
-
-static func is_prop(form_id: String) -> bool:
-	return PROPS.has(form_id)
 
 static func is_valid(form_id: String) -> bool:
 	return form_id == SLIME or PROPS.has(form_id)
