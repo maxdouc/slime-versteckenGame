@@ -15,7 +15,9 @@ extends RefCounted
 ## for real assets later must not touch the transform logic, so everything
 ## gameplay needs (size class, collision volume) lives HERE, not in the scenes.
 ##
-## Networked form state arrives in feature/network-transform-state.
+## Form ids are deliberately short strings: player_capsule.gd replicates
+## form_id through its MultiplayerSynchronizer (on change only), and the
+## paint system will key its stroke events off the same ids later.
 
 ## Form id of the untransformed slime. Prop form ids are the PROPS keys.
 const SLIME := "slime"
