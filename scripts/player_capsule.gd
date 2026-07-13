@@ -16,14 +16,16 @@ extends CharacterBody3D
 ## only exists on the locally controlled capsule.
 ##
 ## FORMS: form_id names the current form (PlayerForms registry). Transforming
-## swaps visuals + collision volume only; props always spawn neutral white
-## (SPEC.md 9.1). TEMPORARY debug keys until the real selection UX exists:
+## swaps visuals + collision volume and scales the top speed (SPEC.md 9.2:
+## slime 100 %, small 80 %, medium 60 %, large 40 % — see max_speed()); props
+## always spawn neutral white (SPEC.md 9.1). TEMPORARY debug keys until the
+## real selection UX exists:
 ## 1 = slime, 2 = small, 3 = medium, 4 = large. Local-only in this branch —
 ## replication of form_id is feature/network-transform-state.
 
 const PlayerForms := preload("res://scripts/player_forms.gd")
 
-const WALK_SPEED: float = 5.0
+const WALK_SPEED: float = 5.0  # slime base speed; forms scale it — max_speed()
 const ACCELERATION: float = 25.0  # m/s² while there is movement input
 const DECELERATION: float = 30.0  # m/s² braking toward standstill
 const AIR_CONTROL: float = 0.3  # fraction of accel/decel while airborne
@@ -106,7 +108,7 @@ func _process(delta: float) -> void:
 	var moved := global_position - _prev_position
 	_prev_position = global_position
 	moved.y = 0.0
-	var t := clampf(moved.length() / delta / WALK_SPEED, 0.0, 1.0) * SQUASH_AMOUNT
+	var t := clampf(moved.length() / delta / max_speed(), 0.0, 1.0) * SQUASH_AMOUNT
 	var target := Vector3(1.0 + t, 1.0 - t, 1.0 + t)
 	_visual.scale = _visual.scale.lerp(target, minf(SQUASH_WEIGHT * delta, 1.0))
 
@@ -122,7 +124,7 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		rate *= AIR_CONTROL
 	var horizontal := Vector3(velocity.x, 0.0, velocity.z)
-	horizontal = horizontal.move_toward(direction * WALK_SPEED, rate * delta)
+	horizontal = horizontal.move_toward(direction * max_speed(), rate * delta)
 	velocity.x = horizontal.x
 	velocity.z = horizontal.z
 
@@ -131,6 +133,14 @@ func _physics_process(delta: float) -> void:
 		_visual.rotation.y = lerp_angle(_visual.rotation.y, target_yaw, minf(TURN_WEIGHT * delta, 1.0))
 
 	move_and_slide()
+
+## Effective top speed for the current form: the slime base speed scaled by
+## the SPEC.md 9.2 size tier (slime 100 %, small 80 %, medium 60 %, large
+## 40 %). Queried every frame — movement AND squash — so a transform changes
+## the speed immediately and the waddle animation stays proportional to each
+## form's own top speed.
+func max_speed() -> float:
+	return WALK_SPEED * PlayerForms.speed_multiplier(form_id)
 
 ## Transform into a prop form (a PlayerForms.PROPS key). The prop spawns
 ## neutral white no matter what the slime looks like — SPEC.md 9.1's anti-P2W
