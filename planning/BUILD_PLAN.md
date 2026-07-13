@@ -72,16 +72,21 @@ This file is ignored by git and must not be committed.
 - feature/player-movement-camera is merged into main.
 - feature/slime-placeholder is merged into main.
 - Phase 2 (Player feel) is complete; exit criteria tested successfully.
+- feature/transform-white-props is merged into main.
+- feature/prop-speed-tiers is merged into main.
+- feature/network-transform-state is merged into main.
+- Phase 3 (Transform system) is complete. Manual tests passed: local transformation, speed tiers, two local instances, late join, and two real machines over ENet and Tailscale.
+- Note: native WebRTC on macOS was not tested successfully because the repository currently lacks the macOS webrtc_native framework. This is tracked as a separate platform setup issue, not a Phase 3 gameplay failure.
 
 ### In progress
 
-- None. Phase 3 (Transform system) is the current next phase.
+- None. Phase 4 (Paint system) is the current next phase.
 
 ### Next
 
-- feature/transform-white-props
+- feature/paint-prototype
   - Owner: Travis
-  - Goal: Transform from slime into white placeholder props (Phase 3).
+  - Goal: Basic raycast paint onto one prop (Phase 4).
   - Status: Next
 
 ## Development roadmap
@@ -157,15 +162,29 @@ Exit criteria (tested successfully):
 
 Goal: Let players transform from slime into white placeholder props.
 
-Status: Next — this is the current phase.
+Status: Completed. All Phase 3 branches are done and merged into main.
 
 Branches:
 
 | Branch | Owner | Status | Scope |
 |---|---|---|---|
-| feature/transform-white-props | Travis | Next | Transform into white props |
-| feature/prop-speed-tiers | Travis | Not started | Slime 100%, small 80%, medium 60%, large 40% |
-| feature/network-transform-state | Travis | Not started | Other players see transform state |
+| feature/transform-white-props | Travis | Done | Transform into white props |
+| feature/prop-speed-tiers | Travis | Done | Slime 100%, small 80%, medium 60%, large 40% |
+| feature/network-transform-state | Travis | Done | Other players see transform state |
+
+Manual tests passed:
+
+- Local transformation.
+- Speed tiers.
+- Two local instances.
+- Late join.
+- Two real machines over ENet and Tailscale.
+
+Known platform issue (not a Phase 3 gameplay failure):
+
+- Native WebRTC on macOS was not tested successfully because the repository
+  currently lacks the macOS webrtc_native framework. This is a platform setup
+  gap to resolve separately, tracked outside Phase 3 gameplay scope.
 
 Rules:
 
@@ -179,14 +198,16 @@ Rules:
 
 Goal: Build the core identity of the game: sampling and painting props.
 
+Status: Next — this is the current phase.
+
 Branches:
 
 | Branch | Owner | Status | Scope |
 |---|---|---|---|
-| feature/paint-prototype | TBD | Not started | Basic raycast paint onto one prop |
-| feature/eyedropper-and-colorpicker | TBD | Not started | Sample color and choose color |
-| feature/grundieren-button | TBD | Not started | One-click base coat |
-| feature/paint-event-sync | TBD | Not started | Sync strokes as events, never whole textures |
+| feature/paint-prototype | Travis | Next | Basic raycast paint onto one prop |
+| feature/eyedropper-and-colorpicker | Travis | Not started | Sample color and choose color |
+| feature/grundieren-button | Travis | Not started | One-click base coat |
+| feature/paint-event-sync | Travis | Not started | Sync strokes as events, never whole textures |
 
 Rules:
 
@@ -345,7 +366,8 @@ During work:
 ### feature/transform-white-props
 
 Owner: Travis
-Status: Next
+Status: Done — merged into main. Manual tests passed: local transformation,
+two local instances, late join, and two real machines over ENet and Tailscale.
 
 Goal:
 
@@ -363,6 +385,26 @@ Out of scope (separate branches):
 - No speed tiers per form (feature/prop-speed-tiers).
 - No network sync of transform state (feature/network-transform-state).
 - No paint system (Phase 4).
+
+### feature/paint-prototype
+
+Owner: Travis
+Status: Next
+
+Goal:
+
+Basic raycast paint onto one prop — the first step of the Phase 4 paint system (SPEC.md 9.3).
+
+Scope:
+
+- Raycast-based paint application onto a single placeholder prop.
+- Minimal proof of concept; no eyedropper, color picker, Grundieren button, or event-sync yet.
+
+Out of scope (separate branches):
+
+- No eyedropper/color picker (feature/eyedropper-and-colorpicker).
+- No Grundieren one-click base coat (feature/grundieren-button).
+- No network sync of paint strokes (feature/paint-event-sync).
 
 ### feature/web-mp-transport (1D)
 
