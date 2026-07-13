@@ -1,6 +1,7 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/player_capsule.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/paint/paint_sync.gd" id="2_paint_sync"]
 
 [sub_resource type="SphereMesh" id="SphereMesh_body"]
 radius = 0.55
@@ -31,6 +32,9 @@ properties/1/replication_mode = 1
 properties/2/path = NodePath(".:form_id")
 properties/2/spawn = true
 properties/2/replication_mode = 2
+properties/3/path = NodePath(".:paint_epoch")
+properties/3/spawn = true
+properties/3/replication_mode = 2
 
 [node name="PlayerCapsule" type="CharacterBody3D"]
 script = ExtResource("1_script")
@@ -71,3 +75,6 @@ spring_length = 3.5
 [node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
 root_path = NodePath("..")
 replication_config = SubResource("SceneReplicationConfig_1")
+
+[node name="PaintSync" type="Node" parent="."]
+script = ExtResource("2_paint_sync")
