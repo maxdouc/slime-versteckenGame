@@ -305,8 +305,9 @@ func _check_applied(capsule: CharacterBody3D, forms: GDScript, expected_form: St
 	_check(anchor.get_child_count() == 1, "%s: exactly one prop visual" % label)
 	_check(collision.shape == forms.collision_shape(expected_form),
 			"%s: collision volume from the registry" % label)
-	var all_white := true
-	for mesh_node in anchor.find_children("*", "MeshInstance3D", true, false):
+	var meshes: Array[Node] = anchor.find_children("*", "MeshInstance3D", true, false)
+	var all_white := meshes.size() > 0  # no meshes at all must fail, not pass
+	for mesh_node in meshes:
 		var mesh_instance := mesh_node as MeshInstance3D
 		if mesh_instance.mesh == null:
 			all_white = false
@@ -316,4 +317,4 @@ func _check_applied(capsule: CharacterBody3D, forms: GDScript, expected_form: St
 			if not (material is StandardMaterial3D and material.albedo_color == WHITE
 					and material.albedo_texture == null):
 				all_white = false
-	_check(all_white, "%s: prop renders neutral white" % label)
+	_check(all_white, "%s: prop renders neutral white (%d meshes)" % [label, meshes.size()])

@@ -68,9 +68,6 @@ const SPEED_MULTIPLIERS := {
 ## they are read-only at runtime, so sharing is safe and cheap.
 static var _shape_cache: Dictionary = {}
 
-static func is_prop(form_id: String) -> bool:
-	return PROPS.has(form_id)
-
 static func is_valid(form_id: String) -> bool:
 	return form_id == SLIME or PROPS.has(form_id)
 
