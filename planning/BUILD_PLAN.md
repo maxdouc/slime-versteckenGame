@@ -77,17 +77,20 @@ This file is ignored by git and must not be committed.
 - feature/network-transform-state is merged into main.
 - Phase 3 (Transform system) is complete. Manual tests passed: local transformation, speed tiers, two local instances, late join, and two real machines over ENet and Tailscale.
 - Note: native WebRTC on macOS was not tested successfully because the repository currently lacks the macOS webrtc_native framework. This is tracked as a separate platform setup issue, not a Phase 3 gameplay failure.
+- feature/paint-prototype is merged into main.
+- feature/eyedropper-and-colorpicker is merged into main.
+- feature/grundieren-button is merged into main.
+- feature/paint-event-sync is merged into main.
+- Phase 4 (Paint system) is complete. Manual tests passed: local painting, camera orbit while painting, eyedropper and HSV color picker, Grundieren and Alles-Löschen, paint persistence while moving, paint reset when returning to slime, two local instances, paint event synchronization, independent player paint state, late join, and two real machines over ENet and Tailscale.
 
 ### In progress
 
-- None. Phase 4 (Paint system) is the current next phase.
+- None. Phase 5 (Round loop) is the current next phase.
 
 ### Next
 
-- feature/paint-prototype
-  - Owner: Travis
-  - Goal: Basic raycast paint onto one prop (Phase 4).
-  - Status: Next
+- Phase 5 — Round loop is the next phase to plan.
+  - Owners and branch details are still TBD; the team must decide assignments before work starts.
 
 ## Development roadmap
 
@@ -198,16 +201,36 @@ Rules:
 
 Goal: Build the core identity of the game: sampling and painting props.
 
-Status: Next — this is the current phase.
+Status: Completed. All Phase 4 branches are done and merged into main.
 
 Branches:
 
 | Branch | Owner | Status | Scope |
 |---|---|---|---|
-| feature/paint-prototype | Travis | Next | Basic raycast paint onto one prop |
-| feature/eyedropper-and-colorpicker | Travis | Not started | Sample color and choose color |
-| feature/grundieren-button | Travis | Not started | One-click base coat |
-| feature/paint-event-sync | Travis | Not started | Sync strokes as events, never whole textures |
+| feature/paint-prototype | Travis | Done | Basic raycast paint onto one prop |
+| feature/eyedropper-and-colorpicker | Travis | Done | Sample color and choose color |
+| feature/grundieren-button | Travis | Done | One-click base coat |
+| feature/paint-event-sync | Travis | Done | Sync strokes as events, never whole textures |
+
+Manual tests passed:
+
+- Local painting.
+- Camera orbit while painting.
+- Eyedropper and HSV color picker.
+- Grundieren and Alles-Löschen.
+- Paint persistence while moving.
+- Paint reset when returning to slime.
+- Two local instances.
+- Paint event synchronization.
+- Independent player paint state.
+- Late join.
+- Two real machines over ENet and Tailscale.
+
+Known platform issue (not a Phase 4 gameplay failure):
+
+- Native WebRTC on macOS remains untested because the repository still lacks
+  the macOS webrtc_native framework. This is the same separate platform setup
+  issue already tracked since Phase 3.
 
 Rules:
 
@@ -221,6 +244,9 @@ Rules:
 ### Phase 5 — Round loop
 
 Goal: Turn the mechanics into an actual game round.
+
+Status: Next — this is the next phase to plan. Owners and branch scopes are
+not assigned yet and require a team decision.
 
 Branches:
 
@@ -389,7 +415,9 @@ Out of scope (separate branches):
 ### feature/paint-prototype
 
 Owner: Travis
-Status: Next
+Status: Done — merged into main. Phase 4 continued with
+feature/eyedropper-and-colorpicker, feature/grundieren-button, and
+feature/paint-event-sync, all merged into main.
 
 Goal:
 
