@@ -15,7 +15,6 @@ extends RefCounted
 ## for real assets later must not touch the transform logic, so everything
 ## gameplay needs (size class, collision volume) lives HERE, not in the scenes.
 ##
-## Speed tiers per size (SPEC.md 9.2) arrive in feature/prop-speed-tiers.
 ## Networked form state arrives in feature/network-transform-state.
 
 ## Form id of the untransformed slime. Prop form ids are the PROPS keys.
@@ -53,6 +52,16 @@ const PROPS := {
 ## otherwise transforming back would change how the slime moves.
 const SLIME_COLLISION := {"type": "capsule", "radius": 0.4, "height": 1.8, "origin": Vector3(0.0, 0.9, 0.0)}
 
+## Top speed per size class relative to the slime base speed — the SPEC.md 9.2
+## table, verbatim: slime 100 %, small 80 %, medium 60 %, large 40 %. Smaller
+## forms are strictly faster, so eating never unlocks a downside (SPEC.md 8).
+const SPEED_MULTIPLIERS := {
+	Size.SLIME: 1.0,
+	Size.SMALL: 0.8,
+	Size.MEDIUM: 0.6,
+	Size.LARGE: 0.4,
+}
+
 ## Shape3D resources are built once per form and shared by every player —
 ## they are read-only at runtime, so sharing is safe and cheap.
 static var _shape_cache: Dictionary = {}
@@ -67,6 +76,9 @@ static func size_of(form_id: String) -> Size:
 	if PROPS.has(form_id):
 		return PROPS[form_id]["size"]
 	return Size.SLIME
+
+static func speed_multiplier(form_id: String) -> float:
+	return SPEED_MULTIPLIERS[size_of(form_id)]
 
 static func scene_path(prop_id: String) -> String:
 	return PROPS[prop_id]["scene"]
