@@ -70,6 +70,16 @@ func image() -> Image:
 func texture() -> ImageTexture:
 	return _texture
 
+## Exact paint color at `uv` — BASE_COLOR while unpainted. The 3D eyedropper
+## reads through this, so sampling a painted prop returns precisely what the
+## brush laid down (same pixel mapping as stamp_uv).
+func color_at_uv(uv: Vector2) -> Color:
+	if _image == null:
+		return BASE_COLOR
+	var px := clampi(int(uv.x * TEXTURE_SIZE), 0, TEXTURE_SIZE - 1)
+	var py := clampi(int(uv.y * TEXTURE_SIZE), 0, TEXTURE_SIZE - 1)
+	return _image.get_pixel(px, py)
+
 ## Paint one brush stamp where a raycast hit the bound mesh. Returns false when
 ## nothing is bound or the point cannot be mapped to a UV.
 func paint_world_point(world_point: Vector3) -> bool:
