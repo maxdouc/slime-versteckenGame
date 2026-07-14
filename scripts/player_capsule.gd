@@ -104,6 +104,13 @@ var _paint_hud: CanvasLayer  # local player only (like the camera rig)
 ## Round state (Phase 5) — resolved via the ancestor-walk locator, null when
 ## no GameState exists above this capsule (focused tests spawn bare capsules).
 var _game_state: Node = null
+var _npc_manager: Node = null
+
+const EAT_HOLD_SECONDS := 1.0  # E-hold to slurp an NPC (SPEC.md 7)
+const EAT_REACH := 2.5  # prompt range; the host validates the same reach
+
+var _eat_hold := 0.0
+var _slurp_npc: Node3D = null
 
 ## Current form: PlayerForms.SLIME or a PlayerForms.PROPS key. Replicated via
 ## the MultiplayerSynchronizer (on change + spawn state); remote copies and
@@ -151,6 +158,7 @@ func _ready() -> void:
 	if _game_state != null:
 		_game_state.roles_assigned.connect(_on_round_roles_assigned)
 		_game_state.phase_changed.connect(_on_round_phase_changed)
+	_npc_manager = RoundLocator.locate_named(self, ^"NpcManager")
 	_apply_form()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -308,6 +316,7 @@ func _process(delta: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	_drain_paint_queue()
+	_update_feeding(delta)
 
 	if not is_on_floor():
 		velocity += get_gravity() * delta
@@ -413,6 +422,47 @@ func _find_prop_mesh(prop: Node) -> MeshInstance3D:
 	var meshes := prop.find_children("*", "MeshInstance3D", true, false)
 	return meshes[0] if meshes.size() > 0 else null
 
+## Feeding (SPEC.md 7): hold E for 1 s next to a sleeping NPC — hiders only,
+## PREP only. This runs on the OWNING peer: it tracks the hold and the slurp
+## cosmetic, then sends ONE eat request that the host validates (phase, role,
+## real distance). Interaction prompts appear only near NPCs; other players
+## are never edible.
+func _update_feeding(delta: float) -> void:
+	if _game_state == null or _npc_manager == null:
+		return
+	var me := get_multiplayer_authority()
+	var eligible: bool = _game_state.current_phase == _game_state.Phase.PREP \
+			and _game_state.role_of(me) == _game_state.Role.HIDER \
+			and _game_state.is_alive(me)
+	var npc: Node3D = null
+	if eligible:
+		npc = _npc_manager.nearest_living_npc(global_position, EAT_REACH)
+	if npc == null:
+		_reset_feeding()
+		return
+	if npc != _slurp_npc:
+		_reset_feeding()
+		_slurp_npc = npc
+	if Input.is_action_pressed("fressen"):
+		_eat_hold += delta
+		npc.set_slurp(_eat_hold / EAT_HOLD_SECONDS)
+		if _eat_hold >= EAT_HOLD_SECONDS:
+			var npc_id: int = npc.npc_id
+			_reset_feeding()
+			_npc_manager.request_eat_from(me, npc_id)
+	else:
+		_eat_hold = 0.0
+		npc.reset_slurp()
+	get_tree().call_group("round_hud", "set_eat_prompt",
+			"[E] Fressen — halten", _eat_hold / EAT_HOLD_SECONDS)
+
+func _reset_feeding() -> void:
+	_eat_hold = 0.0
+	if _slurp_npc != null and is_instance_valid(_slurp_npc):
+		_slurp_npc.reset_slurp()
+	_slurp_npc = null
+	get_tree().call_group("round_hud", "set_eat_prompt", "", 0.0)
+
 ## Round start (SPEC.md 5.1): the owner repositions itself for its role —
 ## seekers wait blind in the sealed spawn box, hiders start at the map spawn.
 ## Only the authority moves itself; everyone else sees it via the synchronizer.
@@ -468,9 +518,10 @@ static func _ensure_input_actions() -> void:
 		"form_small": [KEY_2],
 		"form_medium": [KEY_3],
 		"form_large": [KEY_4],
-		# Paint mode toggle (Phase 4). P as in Pinsel; E stays reserved for the
-		# Fressen interaction (SPEC.md 7).
+		# Paint mode toggle (Phase 4). P as in Pinsel; E is Fressen (below).
 		"paint_mode": [KEY_P],
+		# Hold E next to a sleeping NPC to eat it (SPEC.md 7, Phase 5).
+		"fressen": [KEY_E],
 		# 3D eyedropper in paint mode. Q, not E — E is the future Fressen key.
 		"eyedropper": [KEY_Q],
 		# One-click base coat in paint mode (SPEC.md 9.3 Grundieren).

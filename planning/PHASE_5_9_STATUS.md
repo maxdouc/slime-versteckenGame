@@ -13,8 +13,8 @@ evidence. Manual/external validation is never claimed.
 | # | Branch | Parent | Status | SHA | Tests |
 |---|--------|--------|--------|-----|-------|
 | 0 | planning/phase-5-9-execution | main | ✅ | bd82bbe | n/a (docs) |
-| 1 | feature/round-phases | 0 | ✅ | (head of branch) | 42/42 new + full regression |
-| 2 | feature/npc-slimes-feeding | 1 | ⏳ | — | — |
+| 1 | feature/round-phases | 0 | ✅ | dbbe7d4 | 42/42 new + full regression |
+| 2 | feature/npc-slimes-feeding | 1 | ✅ | (head of branch) | 25/25 new + full regression |
 | 3 | feature/eat-progression-table | 2 | ⏳ | — | — |
 | 4 | feature/rotation-timer | 3 | ⏳ | — | — |
 | 5 | feature/win-lose-reset | 4 | ⏳ | — | — |
@@ -81,6 +81,27 @@ evidence. Manual/external validation is never claimed.
   runs the same code path without RPCs.
 - Manual (Travis): two-machine phase flow, HUD readability, seeker box
   blindness.
+
+### 2 · feature/npc-slimes-feeding — ✅
+
+- Changed: `scripts/round/npc_manager.gd` + `scripts/npc_slime.gd` +
+  `scenes/npc_slime.tscn` (new), `scripts/round/round_locator.gd`
+  (locate_named + has_real_peer helpers), `scripts/game_state.gd`
+  (npcs_per_hider, eaten_of/record_eaten/hider_ids, npc_eaten via registry
+  diff, public is_round_authority), `scenes/gray_room.tscn` (6 npc_spawn
+  markers), `scripts/player_capsule.gd` (E-hold-1s feeding + prompt push,
+  "fressen" action), `scripts/round/round_hud.gd` + `scenes/round_hud.tscn`
+  (eat prompt + progress + eaten count), `scenes/main.tscn`
+  (Npcs/NpcSpawner/NpcManager), `tests/npc_feeding_test.gd` (new).
+- Tests (2026-07-14, all exit 0): new test PASS 25/25 (TDD red first:
+  missing markers + missing manager script). Caught a real bug mid-branch:
+  host-as-eater used rpc_id at itself (illegal without call_local) — fixed
+  with a direct host path; test extended to force BOTH host-as-hider and
+  client-as-hider eats. Full regression (7 suites + round_phases 42) PASS;
+  boot exit 0; `git diff --check` clean.
+- Host validates phase (PREP only), role (hider), liveness, NPC existence,
+  and real distance (2.5 m); spoofed eater ids rejected via sender check.
+- Manual (Travis): slurp/prompt feel, poof visibility, two-machine feeding.
 
 ## Risks / open items (running list)
 

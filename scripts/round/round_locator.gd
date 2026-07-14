@@ -19,10 +19,22 @@ extends RefCounted
 ## bare capsule) — callers must treat round features as absent then.
 
 static func locate(from: Node) -> Node:
+	return locate_named(from, ^"GameState")
+
+## Same ancestor walk for any uniquely-named world service (e.g. "NpcManager"
+## under Main in the real game, under the branch root in test worlds).
+static func locate_named(from: Node, child_name: NodePath) -> Node:
 	var node := from.get_parent()
 	while node != null:
-		var found := node.get_node_or_null(^"GameState")
+		var found := node.get_node_or_null(child_name)
 		if found != null:
 			return found
 		node = node.get_parent()
 	return null
+
+## True only when a REAL transport is attached to this node's multiplayer
+## branch. Offline play and the OfflineMultiplayerPeer default both count as
+## "no peer": RPCs would be pointless or error, so hosts call directly then.
+static func has_real_peer(node: Node) -> bool:
+	var peer := node.multiplayer.multiplayer_peer
+	return peer != null and not (peer is OfflineMultiplayerPeer)

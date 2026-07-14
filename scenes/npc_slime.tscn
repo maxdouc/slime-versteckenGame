@@ -1,0 +1,44 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/npc_slime.gd" id="1_npc"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_npc_body"]
+radius = 0.33
+height = 0.48
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_npc_body"]
+albedo_color = Color(0.78, 0.88, 0.8, 1)
+roughness = 0.4
+
+[sub_resource type="BoxMesh" id="BoxMesh_npc_eye"]
+size = Vector3(0.09, 0.012, 0.02)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_npc_eye"]
+albedo_color = Color(0.08, 0.08, 0.08, 1)
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_npc"]
+radius = 0.35
+
+[node name="NpcSlime" type="StaticBody3D"]
+script = ExtResource("1_npc")
+
+[node name="Visual" type="Node3D" parent="."]
+
+[node name="Body" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.24, 0)
+mesh = SubResource("SphereMesh_npc_body")
+surface_material_override/0 = SubResource("StandardMaterial3D_npc_body")
+
+[node name="EyeLeft" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.09, 0.33, -0.28)
+mesh = SubResource("BoxMesh_npc_eye")
+surface_material_override/0 = SubResource("StandardMaterial3D_npc_eye")
+
+[node name="EyeRight" type="MeshInstance3D" parent="Visual"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.09, 0.33, -0.28)
+mesh = SubResource("BoxMesh_npc_eye")
+surface_material_override/0 = SubResource("StandardMaterial3D_npc_eye")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+shape = SubResource("SphereShape3D_npc")

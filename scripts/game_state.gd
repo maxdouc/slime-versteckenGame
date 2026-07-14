@@ -24,6 +24,7 @@ extends Node
 signal phase_changed(phase: Phase)
 signal roles_assigned
 signal registry_changed
+signal npc_eaten(peer_id: int, count: int)
 
 enum Phase { LOBBY, PREP, HUNT, END }
 enum Role { NONE, HIDER, SEEKER }
@@ -34,6 +35,7 @@ var hunt_seconds: float = 240.0
 var end_seconds: float = 10.0          ## END screen dwell before LOBBY
 var rotation_seconds: float = 60.0     ## per-hider rotation timer (SPEC.md 6)
 var paintball_cooldown: float = 4.0    ## seeker miss penalty (SPEC.md 11)
+var npcs_per_hider: float = 2.0        ## NPC slimes per hider (SPEC.md 7)
 
 var current_phase: Phase = Phase.LOBBY
 
@@ -88,6 +90,30 @@ func is_alive(id: int) -> bool:
 
 func is_round_active() -> bool:
 	return current_phase == Phase.PREP or current_phase == Phase.HUNT
+
+func eaten_of(id: int) -> int:
+	return players[id]["eaten"] if players.has(id) else 0
+
+func hider_ids() -> Array:
+	var out: Array = []
+	for id in players:
+		if players[id]["role"] == Role.HIDER:
+			out.append(id)
+	return out
+
+## Host-only: a validated feeding just completed (SPEC.md 7). The updated
+## registry travels to everyone; clients learn about the increase through the
+## diff in _sync_registry and re-emit npc_eaten locally.
+func record_eaten(id: int) -> void:
+	if not _is_authority() or not players.has(id):
+		return
+	var reg := players.duplicate(true)
+	reg[id]["eaten"] += 1
+	_broadcast_registry(reg, false)
+
+## Round-truth query for sibling systems (NPC manager, seeker kit, …).
+func is_round_authority() -> bool:
+	return _is_authority()
 
 func time_left() -> float:
 	return maxf(_timer, 0.0)
@@ -171,10 +197,20 @@ func _sync_phase(phase: int, duration: float) -> void:
 
 @rpc("authority", "call_local", "reliable")
 func _sync_registry(reg: Dictionary, fresh_roles: bool) -> void:
+	# Diff the eaten counts BEFORE replacing, so every peer (not only the
+	# host) can emit npc_eaten without a second RPC.
+	var increases: Array = []
+	if not fresh_roles:
+		for id in reg:
+			var before: int = players[id]["eaten"] if players.has(id) else 0
+			if reg[id]["eaten"] > before:
+				increases.append([id, reg[id]["eaten"]])
 	players = reg
 	registry_changed.emit()
 	if fresh_roles:
 		roles_assigned.emit()
+	for inc in increases:
+		npc_eaten.emit(inc[0], inc[1])
 
 # --- Peer lifecycle (host book-keeping) ----------------------------------------
 
