@@ -15,8 +15,8 @@ evidence. Manual/external validation is never claimed.
 | 0 | planning/phase-5-9-execution | main | ✅ | bd82bbe | n/a (docs) |
 | 1 | feature/round-phases | 0 | ✅ | dbbe7d4 | 42/42 new + full regression |
 | 2 | feature/npc-slimes-feeding | 1 | ✅ | df5973e | 25/25 new + full regression |
-| 3 | feature/eat-progression-table | 2 | ✅ | (head of branch) | 39/39 new + full regression |
-| 4 | feature/rotation-timer | 3 | ⏳ | — | — |
+| 3 | feature/eat-progression-table | 2 | ✅ | ad51c77 | 39/39 new + full regression |
+| 4 | feature/rotation-timer | 3 | ✅ | (head of branch) | 24/24 new + full regression |
 | 5 | feature/win-lose-reset | 4 | ⏳ | — | — |
 | 6 | feature/paintball-gun | 5 | ⏳ | — | — |
 | 7 | feature/seeker-splatter | 6 | ⏳ | — | — |
@@ -116,6 +116,32 @@ evidence. Manual/external validation is never claimed.
   progression.gd, then ungated transform). Full regression (9 suites),
   boot, `git diff --check` — clean.
 - Manual (Travis): unlock-loop feel on two machines, HUD wording.
+
+### 4 · feature/rotation-timer — ✅
+
+- Changed: `scripts/round/room_volume.gd` (new — math-based contains_global,
+  convention: group room_volume + BoxShape3D child),
+  `scripts/round/rotation_tracker.gd` (new — owner-side timer: room entry
+  starts it, 5 s dwell confirms changes while the old timer keeps running,
+  grace drives the drip 0→1, then request_elimination("rotation")),
+  `scenes/gray_room.tscn` (RoomVolumeWest/East halves so the mechanic tests
+  pre-Map-1), `scenes/player_capsule.tscn` (+DripPuddle, +RotationTracker,
+  +rotation_drip in the replication config), `scripts/player_capsule.gd`
+  (replicated rotation_drip drives the puddle on every peer),
+  `scripts/game_state.gd` (dwell/grace settings, SETTINGS BROADCAST at round
+  start + late join — trackers on client machines run the host's values —
+  elimination data layer: request_elimination victim-side, eliminate_player
+  host-side, player_eliminated broadcast), round HUD rotation line,
+  `tests/rotation_timer_test.gd` (new).
+- Tests (2026-07-14, all exit 0): new test PASS 24/24 — idle expiry
+  eliminates on both peers with replicated drip, confirmed room change
+  resets (alive 0.3 s past the old deadline), door-sill bounce does NOT
+  reset (death on the original schedule, 1.42 s), PREP is rotation-free,
+  seekers untouched, reset_timer() hook present for Phase 9. Full
+  regression (10 suites) + boot + `git diff --check` clean.
+- Overlap resolution honored: this branch stops at the DATA layer
+  (alive=false + signal); death behavior lands in feature/win-lose-reset.
+- Manual (Travis): drip readability at distance, warning feel, two-machine.
 
 ## Risks / open items (running list)
 

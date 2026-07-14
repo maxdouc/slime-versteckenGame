@@ -1,4 +1,6 @@
-[gd_scene load_steps=14 format=3]
+[gd_scene load_steps=16 format=3]
+
+[ext_resource type="Script" path="res://scripts/round/room_volume.gd" id="1_room_volume"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_floor"]
 size = Vector3(12, 0.2, 12)
@@ -38,6 +40,9 @@ size = Vector3(0.2, 3, 6)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_swall_ew"]
 size = Vector3(0.2, 3, 6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_room_half"]
+size = Vector3(6, 3, 12)
 
 [node name="GrayRoom" type="Node3D"]
 
@@ -95,6 +100,26 @@ transform = Transform3D(1, 0, 0, 0, 0.707107, 0.707107, 0, -0.707107, 0.707107, 
 
 [node name="PlayerSpawnPoint" type="Marker3D" parent="." groups=["player_spawn"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="RoomVolumeWest" type="Area3D" parent="." groups=["room_volume"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 1.5, 0)
+monitoring = false
+monitorable = false
+script = ExtResource("1_room_volume")
+room_id = "test_west"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RoomVolumeWest"]
+shape = SubResource("BoxShape3D_room_half")
+
+[node name="RoomVolumeEast" type="Area3D" parent="." groups=["room_volume"]]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 1.5, 0)
+monitoring = false
+monitorable = false
+script = ExtResource("1_room_volume")
+room_id = "test_east"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="RoomVolumeEast"]
+shape = SubResource("BoxShape3D_room_half")
 
 [node name="NpcSpawn1" type="Marker3D" parent="." groups=["npc_spawn"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0.1, -4)

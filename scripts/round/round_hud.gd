@@ -18,6 +18,7 @@ const NOTICE_SECONDS := 2.5
 @onready var _role_label: Label = $Panel/VBox/RoleLabel
 @onready var _eaten_label: Label = $Panel/VBox/EatenLabel
 @onready var _forms_label: Label = $Panel/VBox/FormsLabel
+@onready var _rotation_label: Label = $Panel/VBox/RotationLabel
 @onready var _start_button: Button = $Panel/VBox/StartButton
 @onready var _prompt_label: Label = $Prompt/PromptLabel
 @onready var _prompt_progress: ProgressBar = $Prompt/PromptProgress
@@ -47,6 +48,12 @@ func flash_notice(text: String) -> void:
 	_notice_label.text = text
 	_notice_label.visible = true
 	_notice_left = NOTICE_SECONDS
+
+## Pushed by the local RotationTracker every tick while the timer runs.
+func set_rotation_status(text: String, warn: bool) -> void:
+	_rotation_label.text = text
+	_rotation_label.visible = text != ""
+	_rotation_label.modulate = Color(1.0, 0.35, 0.3) if warn else Color.WHITE
 
 func _process(_delta: float) -> void:
 	if _notice_left > 0.0:

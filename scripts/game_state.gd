@@ -25,6 +25,7 @@ signal phase_changed(phase: Phase)
 signal roles_assigned
 signal registry_changed
 signal npc_eaten(peer_id: int, count: int)
+signal player_eliminated(peer_id: int, reason: String)
 
 enum Phase { LOBBY, PREP, HUNT, END }
 enum Role { NONE, HIDER, SEEKER }
@@ -36,6 +37,8 @@ var prep_seconds: float = 60.0
 var hunt_seconds: float = 240.0
 var end_seconds: float = 10.0          ## END screen dwell before LOBBY
 var rotation_seconds: float = 60.0     ## per-hider rotation timer (SPEC.md 6)
+var rotation_dwell_seconds: float = 5.0   ## stay this long before a room counts
+var rotation_grace_seconds: float = 10.0  ## drip window after expiry, then out
 var paintball_cooldown: float = 4.0    ## seeker miss penalty (SPEC.md 11)
 var npcs_per_hider: float = 2.0        ## NPC slimes per hider (SPEC.md 7)
 
@@ -65,6 +68,7 @@ func _process(delta: float) -> void:
 func start_round() -> void:
 	if not can_start_round():
 		return
+	_broadcast_settings()  # clients run their own rotation timers on these
 	var ids := _connected_ids()
 	var seeker_count := clampi(2 if ids.size() >= 7 else 1, 0, ids.size() - 1)
 	ids.shuffle()
@@ -77,6 +81,41 @@ func start_round() -> void:
 		}
 	_broadcast_registry(reg, true)
 	_set_phase(Phase.PREP)
+
+## Victim-side entry point: this machine's own player just lost cohesion
+## (rotation) — later also other self-reported causes. The HOST re-validates.
+func request_elimination(reason: String) -> void:
+	var me := multiplayer.get_unique_id() if _has_net_peer() else 1
+	if _has_net_peer() and not multiplayer.is_server():
+		_request_elimination_rpc.rpc_id(1, me, reason)
+	else:
+		_request_elimination_rpc(me, reason)
+
+@rpc("any_peer", "reliable")
+func _request_elimination_rpc(victim_id: int, reason: String) -> void:
+	if not _is_authority():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if sender != 0 and sender != victim_id:
+		return  # only the victim itself may self-report
+	eliminate_player(victim_id, reason)
+
+## HOST-side elimination entry — the data layer: flips alive=false in the
+## registry and broadcasts the event. The full death BEHAVIOR (ghosting, win
+## checks, END, reset) is owned by feature/win-lose-reset; Phase 6's paintball
+## calls this same entry with reason "paintball".
+func eliminate_player(victim_id: int, reason: String) -> void:
+	if not _is_authority() or current_phase != Phase.HUNT:
+		return  # eliminations only happen during the hunt (SPEC.md 5/6)
+	if role_of(victim_id) != Role.HIDER or not is_alive(victim_id):
+		return
+	var reg := players.duplicate(true)
+	reg[victim_id]["alive"] = false
+	_broadcast_registry(reg, false)
+	if _has_net_peer():
+		_sync_elimination.rpc(victim_id, reason)
+	else:
+		_sync_elimination(victim_id, reason)
 
 func can_start_round() -> bool:
 	return current_phase == Phase.LOBBY and _is_authority()
@@ -172,6 +211,26 @@ func _broadcast_registry(reg: Dictionary, fresh_roles: bool) -> void:
 	else:
 		_sync_registry(reg, fresh_roles)
 
+## Host settings that OTHER machines act on locally (rotation timings now;
+## cooldown display later). Sent at round start and to late joiners.
+func _settings_payload() -> Dictionary:
+	return {
+		"prep_seconds": prep_seconds,
+		"hunt_seconds": hunt_seconds,
+		"end_seconds": end_seconds,
+		"rotation_seconds": rotation_seconds,
+		"rotation_dwell_seconds": rotation_dwell_seconds,
+		"rotation_grace_seconds": rotation_grace_seconds,
+		"paintball_cooldown": paintball_cooldown,
+		"npcs_per_hider": npcs_per_hider,
+	}
+
+func _broadcast_settings() -> void:
+	if _has_net_peer():
+		_sync_settings.rpc(_settings_payload())
+	else:
+		_sync_settings(_settings_payload())
+
 ## True only with a REAL transport attached. Offline play (editor solo, no
 ## lobby yet) and the OfflineMultiplayerPeer default both count as "no peer":
 ## RPCs would be pointless or error, so the host path calls methods directly.
@@ -202,6 +261,21 @@ func _sync_phase(phase: int, duration: float) -> void:
 	phase_changed.emit(current_phase)
 
 @rpc("authority", "call_local", "reliable")
+func _sync_settings(s: Dictionary) -> void:
+	prep_seconds = s.get("prep_seconds", prep_seconds)
+	hunt_seconds = s.get("hunt_seconds", hunt_seconds)
+	end_seconds = s.get("end_seconds", end_seconds)
+	rotation_seconds = s.get("rotation_seconds", rotation_seconds)
+	rotation_dwell_seconds = s.get("rotation_dwell_seconds", rotation_dwell_seconds)
+	rotation_grace_seconds = s.get("rotation_grace_seconds", rotation_grace_seconds)
+	paintball_cooldown = s.get("paintball_cooldown", paintball_cooldown)
+	npcs_per_hider = s.get("npcs_per_hider", npcs_per_hider)
+
+@rpc("authority", "call_local", "reliable")
+func _sync_elimination(victim_id: int, reason: String) -> void:
+	player_eliminated.emit(victim_id, reason)
+
+@rpc("authority", "call_local", "reliable")
 func _sync_registry(reg: Dictionary, fresh_roles: bool) -> void:
 	# Diff the eaten counts BEFORE replacing, so every peer (not only the
 	# host) can emit npc_eaten without a second RPC.
@@ -230,6 +304,7 @@ func _on_peer_connected(id: int) -> void:
 		var reg := players.duplicate(true)
 		reg[id] = {"role": Role.NONE, "alive": false, "eaten": 0}
 		_broadcast_registry(reg, false)
+	_sync_settings.rpc_id(id, _settings_payload())
 	_sync_registry.rpc_id(id, players, false)
 	_sync_phase.rpc_id(id, current_phase, _timer)
 

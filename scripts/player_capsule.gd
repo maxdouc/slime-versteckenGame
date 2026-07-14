@@ -87,6 +87,7 @@ const PAINT_QUEUE_MAX: int = 32  # queued stamps per physics tick (mouse-move bu
 @onready var _spring_arm: SpringArm3D = $CameraPivot/SpringArm3D
 @onready var _camera: Camera3D = $CameraPivot/SpringArm3D/Camera3D
 @onready var _paint_sync: Node = $PaintSync
+@onready var _drip_puddle: MeshInstance3D = $DripPuddle
 
 var _prev_position: Vector3
 
@@ -126,6 +127,12 @@ var form_id: String = PlayerForms.SLIME:
 var paint_epoch: int = 0:
 	set = _set_paint_epoch
 
+## Loss-of-cohesion drip, 0..1 (SPEC.md 6): written by the RotationTracker on
+## the owning peer during the grace window, replicated on change, and drawn
+## as a growing puddle under the body on EVERY peer via the setter.
+var rotation_drip: float = 0.0:
+	set = _set_rotation_drip
+
 func _enter_tree() -> void:
 	# The host names each capsule after the owning peer's ID (main.gd).
 	var peer_id := str(name).to_int()
@@ -161,6 +168,7 @@ func _ready() -> void:
 		_game_state.phase_changed.connect(_on_round_phase_changed)
 	_npc_manager = RoundLocator.locate_named(self, ^"NpcManager")
 	_apply_form()
+	_set_rotation_drip(rotation_drip)  # spawn state may precede @onready
 
 func _unhandled_input(event: InputEvent) -> void:
 	if _paint_mode and _handle_paint_mode_input(event):
@@ -404,6 +412,16 @@ func _set_form_id(value: String) -> void:
 		if is_multiplayer_authority():
 			paint_epoch += 1  # owner: a new form is a new paint lifetime (wipes)
 		_apply_form()  # before ready, _ready()'s _apply_form picks the value up
+
+## Single write path for the drip — tracker (owner) and synchronizer
+## (replicas) both land here; the puddle visual follows on every peer.
+func _set_rotation_drip(value: float) -> void:
+	rotation_drip = clampf(value, 0.0, 1.0)
+	if _drip_puddle == null:
+		return  # spawn state before @onready — _ready() re-applies
+	_drip_puddle.visible = rotation_drip > 0.01
+	var s := maxf(rotation_drip, 0.01)
+	_drip_puddle.scale = Vector3(s, 1.0, s)
 
 ## Single write path for the epoch — owner bumps, synchronizer, and inbound
 ## paint events all land here. An increase wipes the paint (props always
