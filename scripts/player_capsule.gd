@@ -114,6 +114,12 @@ const EAT_REACH := 2.5  # prompt range; the host validates the same reach
 var _eat_hold := 0.0
 var _slurp_npc: Node3D = null
 
+## Ghost state (feature/win-lose-reset): eliminated players and mid-round
+## joiners are invisible, non-colliding and input-dead until the round resets
+## (SPEC.md 5.3 — the free spectator camera arrives in Phase 6). Derived from
+## the replicated registry on EVERY peer, so remote copies ghost themselves.
+var _ghosted := false
+
 ## Current form: PlayerForms.SLIME or a PlayerForms.PROPS key. Replicated via
 ## the MultiplayerSynchronizer (on change + spawn state); remote copies and
 ## late joiners apply it through the setter.
@@ -166,11 +172,16 @@ func _ready() -> void:
 	if _game_state != null:
 		_game_state.roles_assigned.connect(_on_round_roles_assigned)
 		_game_state.phase_changed.connect(_on_round_phase_changed)
+		_game_state.registry_changed.connect(_refresh_ghost)
+		_game_state.round_reset.connect(_on_round_reset)
 	_npc_manager = RoundLocator.locate_named(self, ^"NpcManager")
 	_apply_form()
 	_set_rotation_drip(rotation_drip)  # spawn state may precede @onready
+	_refresh_ghost()  # late joiners may spawn into an already-running round
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _ghosted:
+		return  # the dead don't paint, transform, or recapture the mouse
 	if _paint_mode and _handle_paint_mode_input(event):
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -324,6 +335,8 @@ func _process(delta: float) -> void:
 	_visual.scale = _visual.scale.lerp(target, minf(SQUASH_WEIGHT * delta, 1.0))
 
 func _physics_process(delta: float) -> void:
+	if _ghosted:
+		return  # frozen where it died; Phase 6 gives the dead a free camera
 	_drain_paint_queue()
 	_update_feeding(delta)
 
@@ -506,6 +519,34 @@ func _reset_feeding() -> void:
 	_slurp_npc = null
 	get_tree().call_group("round_hud", "set_eat_prompt", "", 0.0)
 
+## Ghosting is DERIVED state: replicated registry + phase decide it, so every
+## peer's copy of a dead capsule hides itself without extra sync traffic.
+## Mid-round joiners (role NONE, not alive) ghost too — they spectate until
+## the next round instead of roaming the hunt as visible slimes.
+func _refresh_ghost() -> void:
+	if _game_state == null:
+		return
+	var me := get_multiplayer_authority()
+	var should: bool = _game_state.current_phase != _game_state.Phase.LOBBY \
+			and _game_state.players.has(me) and not _game_state.is_alive(me)
+	if should == _ghosted:
+		return
+	_ghosted = should
+	visible = not should
+	collision_layer = 0 if should else 1
+	if should and is_multiplayer_authority() and _paint_mode:
+		_exit_paint_mode()
+
+## Full per-round reset (SPEC.md 5.3): back to slime (wipes paint via the
+## epoch), back to the spawn, dry floor. The registry cleared by the host
+## un-ghosts everyone through _refresh_ghost.
+func _on_round_reset() -> void:
+	if not is_multiplayer_authority():
+		return
+	transform_to_slime()
+	rotation_drip = 0.0
+	_teleport_to_group_marker("player_spawn")
+
 ## Round start (SPEC.md 5.1): the owner repositions itself for its role —
 ## seekers wait blind in the sealed spawn box, hiders start at the map spawn.
 ## Only the authority moves itself; everyone else sees it via the synchronizer.
@@ -518,8 +559,10 @@ func _on_round_roles_assigned() -> void:
 	elif role == _game_state.Role.HIDER:
 		_teleport_to_group_marker("player_spawn")
 
-## Hunt start (SPEC.md 5.2): seekers are released into the map.
+## Hunt start (SPEC.md 5.2): seekers are released into the map. Every copy
+## also re-derives its ghost state — the phase is half of that condition.
 func _on_round_phase_changed(phase: int) -> void:
+	_refresh_ghost()
 	if not is_multiplayer_authority():
 		return
 	if phase == _game_state.Phase.HUNT and _game_state.is_seeker(get_multiplayer_authority()):

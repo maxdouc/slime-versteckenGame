@@ -16,8 +16,8 @@ evidence. Manual/external validation is never claimed.
 | 1 | feature/round-phases | 0 | ✅ | dbbe7d4 | 42/42 new + full regression |
 | 2 | feature/npc-slimes-feeding | 1 | ✅ | df5973e | 25/25 new + full regression |
 | 3 | feature/eat-progression-table | 2 | ✅ | ad51c77 | 39/39 new + full regression |
-| 4 | feature/rotation-timer | 3 | ✅ | (head of branch) | 24/24 new + full regression |
-| 5 | feature/win-lose-reset | 4 | ⏳ | — | — |
+| 4 | feature/rotation-timer | 3 | ✅ | b4425f8 | 24/24 new + full regression |
+| 5 | feature/win-lose-reset | 4 | ✅ | (head of branch) | 26/26 new + FULL suite (12 files, 437 checks) |
 | 6 | feature/paintball-gun | 5 | ⏳ | — | — |
 | 7 | feature/seeker-splatter | 6 | ⏳ | — | — |
 | 8 | feature/seeker-cooldown | 7 | ⏳ | — | — |
@@ -142,6 +142,29 @@ evidence. Manual/external validation is never claimed.
 - Overlap resolution honored: this branch stops at the DATA layer
   (alive=false + signal); death behavior lands in feature/win-lose-reset.
 - Manual (Travis): drip readability at distance, warning feel, two-machine.
+
+### 5 · feature/win-lose-reset — ✅  (PHASE 5 COMPLETE — implementation)
+
+- Changed: `scripts/game_state.gd` (end_result payload, win checks — all
+  hiders dead → seekers win, hunt expiry → each surviving hider wins
+  individually, hider disconnect can end the round; reset_round() clears
+  the registry and broadcasts round_reset; END→LOBBY runs the reset),
+  `scripts/player_capsule.gd` (derived ghosting from the replicated
+  registry: eliminated players AND mid-round joiners are invisible,
+  non-colliding, input-dead on every peer; round_reset re-slimes, dries
+  the drip, respawns), `scripts/round/round_hud.gd` + `scenes/round_hud.tscn`
+  (END screen with winner + personal outcome, "Du bist raus" banner),
+  `tests/win_lose_reset_test.gd` (new).
+- Test-infrastructure fix in the same commit: my five Phase 5 test files
+  treated a TIMEOUT as PASS when every ran check succeeded — timeouts now
+  count as failures (exit 1). Also made the npc_feeding HUNT-gate check
+  timing-robust: the new (correct) complete reset wipes the registry at
+  round end, which the old 1.2 s hunt window could race.
+- Tests (2026-07-14): new test PASS 26/26 (red first: round_reset signal
+  missing). PHASE 5 EXIT SUITE: all 12 test files green (437 checks
+  total), boot exit 0, `git diff --check` clean.
+- Manual (Travis): full two-machine round — phases, feeding, unlocks,
+  rotation drip, elimination ghosting, END screen, reset. HUD wording.
 
 ## Risks / open items (running list)
 

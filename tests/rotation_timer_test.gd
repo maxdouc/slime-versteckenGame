@@ -43,6 +43,7 @@ func _initialize() -> void:
 func _process(delta: float) -> bool:
 	_elapsed += delta
 	if not _done and _elapsed > TIMEOUT_SEC:
+		_failures += 1  # a timeout is a failure even if every ran check passed
 		printerr("[rotation_timer_test] FAIL — timed out after %.0f s" % TIMEOUT_SEC)
 		_finish()
 	return _done

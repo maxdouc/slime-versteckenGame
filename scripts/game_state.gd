@@ -26,6 +26,7 @@ signal roles_assigned
 signal registry_changed
 signal npc_eaten(peer_id: int, count: int)
 signal player_eliminated(peer_id: int, reason: String)
+signal round_reset
 
 enum Phase { LOBBY, PREP, HUNT, END }
 enum Role { NONE, HIDER, SEEKER }
@@ -47,6 +48,11 @@ var current_phase: Phase = Phase.LOBBY
 ## peer_id -> {"role": Role, "alive": bool, "eaten": int}. The host writes and
 ## broadcasts it wholesale (6-8 players — tiny); everyone else only reads.
 var players: Dictionary = {}
+
+## Result of the round on display during END (SPEC.md 5.3):
+## {"winner": "seekers"|"hiders", "survivors": Array of peer ids}. Survivors
+## are the individual winners — there is no score. Cleared at round start.
+var end_result: Dictionary = {}
 
 var _timer: float = 0.0
 
@@ -116,6 +122,9 @@ func eliminate_player(victim_id: int, reason: String) -> void:
 		_sync_elimination.rpc(victim_id, reason)
 	else:
 		_sync_elimination(victim_id, reason)
+	# Win check (SPEC.md 5.3): seekers win once every hider is gone.
+	if alive_hider_ids().is_empty():
+		_finish_round("seekers", [])
 
 func can_start_round() -> bool:
 	return current_phase == Phase.LOBBY and _is_authority()
@@ -139,6 +148,13 @@ func hider_ids() -> Array:
 	var out: Array = []
 	for id in players:
 		if players[id]["role"] == Role.HIDER:
+			out.append(id)
+	return out
+
+func alive_hider_ids() -> Array:
+	var out: Array = []
+	for id in players:
+		if players[id]["role"] == Role.HIDER and players[id]["alive"]:
 			out.append(id)
 	return out
 
@@ -185,11 +201,36 @@ func _advance_phase() -> void:
 		Phase.PREP:
 			_set_phase(Phase.HUNT)
 		Phase.HUNT:
-			_set_phase(Phase.END)
+			# The clock beat the seekers: every hider still alive wins
+			# individually (SPEC.md 5.3 — no score).
+			_finish_round("hiders", alive_hider_ids())
 		Phase.END:
+			reset_round()
 			_set_phase(Phase.LOBBY)
 		_:
 			pass
+
+## Host-only: seal the round with its result and show the END screen.
+func _finish_round(winner: String, survivors: Array) -> void:
+	var result := {"winner": winner, "survivors": survivors}
+	if _has_net_peer():
+		_sync_end_result.rpc(result)
+	else:
+		_sync_end_result(result)
+	_set_phase(Phase.END)
+
+## Host-only: the COMPLETE per-round reset (SPEC.md 5.3 — "Kompletter Reset
+## jede Runde. Keine persistenten Freischaltungen."). Every peer un-ghosts,
+## re-slimes and respawns via the round_reset broadcast; the registry clears
+## so the lobby has no roles, no eats, no corpses.
+func reset_round() -> void:
+	if not _is_authority():
+		return
+	if _has_net_peer():
+		_sync_round_reset.rpc()
+	else:
+		_sync_round_reset()
+	_broadcast_registry({}, false)
 
 func _set_phase(p: Phase) -> void:
 	var duration := 0.0
@@ -258,6 +299,8 @@ func _connected_ids() -> Array:
 func _sync_phase(phase: int, duration: float) -> void:
 	current_phase = phase as Phase
 	_timer = duration
+	if current_phase == Phase.PREP:
+		end_result = {}  # a fresh round owes nothing to the last one
 	phase_changed.emit(current_phase)
 
 @rpc("authority", "call_local", "reliable")
@@ -274,6 +317,14 @@ func _sync_settings(s: Dictionary) -> void:
 @rpc("authority", "call_local", "reliable")
 func _sync_elimination(victim_id: int, reason: String) -> void:
 	player_eliminated.emit(victim_id, reason)
+
+@rpc("authority", "call_local", "reliable")
+func _sync_end_result(result: Dictionary) -> void:
+	end_result = result
+
+@rpc("authority", "call_local", "reliable")
+func _sync_round_reset() -> void:
+	round_reset.emit()
 
 @rpc("authority", "call_local", "reliable")
 func _sync_registry(reg: Dictionary, fresh_roles: bool) -> void:
@@ -315,3 +366,6 @@ func _on_peer_disconnected(id: int) -> void:
 		var reg := players.duplicate(true)
 		reg.erase(id)
 		_broadcast_registry(reg, false)
+		# A vanished hider can decide the round: no hiders left = seeker win.
+		if current_phase == Phase.HUNT and alive_hider_ids().is_empty():
+			_finish_round("seekers", [])

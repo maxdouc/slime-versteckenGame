@@ -39,6 +39,7 @@ func _initialize() -> void:
 func _process(delta: float) -> bool:
 	_elapsed += delta
 	if not _done and _elapsed > TIMEOUT_SEC:
+		_failures += 1  # a timeout is a failure even if every ran check passed
 		printerr("[npc_feeding_test] FAIL — timed out after %.0f s" % TIMEOUT_SEC)
 		_finish()
 	return _done
@@ -273,8 +274,8 @@ func _run_tests() -> void:
 
 	# --- HUNT: eating forbidden, leftovers vanish -----------------------------------
 	print("[npc_feeding_test] HUNT start clears NPCs")
-	host.gs.hunt_seconds = 1.2
-	host.gs._advance_phase()  # host authority: force PREP -> HUNT now
+	host.gs.hunt_seconds = 30.0  # long: the reset at round end wipes the
+	host.gs._advance_phase()  # registry, so the gate check must stay in HUNT
 	var hunt_pred := func() -> bool:
 		return host.gs.current_phase == host.gs.Phase.HUNT \
 				and client.gs.current_phase == client.gs.Phase.HUNT
@@ -291,6 +292,7 @@ func _run_tests() -> void:
 	await _until(func() -> bool: return false, 0.5)
 	_check(host.gs.eaten_of(hider_id) == 1, "eat during HUNT rejected (phase gate)")
 
+	host.gs._advance_phase()  # HUNT -> END; END expires into LOBBY on its own
 	var lobby_pred := func() -> bool:
 		return host.gs.current_phase == host.gs.Phase.LOBBY \
 				and client.gs.current_phase == client.gs.Phase.LOBBY

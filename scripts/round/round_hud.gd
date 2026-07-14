@@ -23,6 +23,10 @@ const NOTICE_SECONDS := 2.5
 @onready var _prompt_label: Label = $Prompt/PromptLabel
 @onready var _prompt_progress: ProgressBar = $Prompt/PromptProgress
 @onready var _notice_label: Label = $NoticeLabel
+@onready var _ghost_banner: Label = $GhostBanner
+@onready var _end_panel: PanelContainer = $EndPanel
+@onready var _result_label: Label = $EndPanel/VBox/ResultLabel
+@onready var _outcome_label: Label = $EndPanel/VBox/OutcomeLabel
 
 var _game_state: Node = null
 var _notice_left := 0.0
@@ -70,6 +74,8 @@ func _process(_delta: float) -> void:
 	_eaten_label.text = _eaten_text()
 	_forms_label.text = _forms_text()
 	_start_button.visible = _game_state.can_start_round()
+	_update_ghost_banner()
+	_update_end_panel()
 
 func _on_start_pressed() -> void:
 	_game_state.start_round()
@@ -90,6 +96,39 @@ func _eaten_text() -> String:
 	if _game_state.role_of(me) != _game_state.Role.HIDER:
 		return ""
 	return "Gefressen: %d" % _game_state.eaten_of(me)
+
+func _me() -> int:
+	return multiplayer.get_unique_id() if multiplayer.multiplayer_peer != null else 1
+
+## "Du bist raus" while dead mid-round (ghost until Phase 6's spectator cam).
+func _update_ghost_banner() -> void:
+	var me := _me()
+	_ghost_banner.visible = _game_state.current_phase != _game_state.Phase.LOBBY \
+			and _game_state.current_phase != _game_state.Phase.END \
+			and _game_state.players.has(me) and not _game_state.is_alive(me)
+
+## END screen (SPEC.md 5.3): winner side + the personal outcome. No score.
+func _update_end_panel() -> void:
+	var show: bool = _game_state.current_phase == _game_state.Phase.END \
+			and not _game_state.end_result.is_empty()
+	_end_panel.visible = show
+	if not show:
+		return
+	var winner: String = _game_state.end_result.get("winner", "")
+	var survivors: Array = _game_state.end_result.get("survivors", [])
+	if winner == "seekers":
+		_result_label.text = "Die Sucher gewinnen!"
+	else:
+		_result_label.text = "%d Verstecker überleben!" % survivors.size()
+	var me := _me()
+	if survivors.has(me):
+		_outcome_label.text = "Du überlebst — gewonnen!"
+	elif _game_state.role_of(me) == _game_state.Role.SEEKER:
+		_outcome_label.text = "Gute Jagd!" if winner == "seekers" else "Alle entwischt…"
+	elif _game_state.players.has(me) and not _game_state.is_alive(me):
+		_outcome_label.text = "Du wurdest erwischt."
+	else:
+		_outcome_label.text = ""
 
 ## Unlock overview from the SPEC.md 8 table, e.g. "Groß ✓ · Mittel ✗(1) · Klein ✗(2)".
 func _forms_text() -> String:
