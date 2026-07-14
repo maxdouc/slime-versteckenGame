@@ -1,0 +1,29 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/props/static_prop.gd" id="1_static_prop"]
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_bucket"]
+top_radius = 0.32
+bottom_radius = 0.26
+height = 0.55
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bucket"]
+albedo_color = Color(0.72, 0.28, 0.24, 1)
+roughness = 0.5
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_bucket"]
+radius = 0.32
+height = 0.55
+
+[node name="StaticPropBucket" type="StaticBody3D"]
+script = ExtResource("1_static_prop")
+size_class = "medium"
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.275, 0)
+mesh = SubResource("CylinderMesh_bucket")
+surface_material_override/0 = SubResource("StandardMaterial3D_bucket")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.275, 0)
+shape = SubResource("CylinderShape3D_bucket")

@@ -23,8 +23,8 @@ evidence. Manual/external validation is never claimed.
 | 8 | feature/seeker-cooldown | 7 | ✅ | 953f07e | 13/13 new + FULL suite (15 files, 484 checks) |
 | 9 | feature/spectator-mode | 8 | ✅ | 271f549 | 17/17 new + FULL suite (16 files, 501 checks) |
 | 10 | feature/map1-house-graybox | 9 | ✅ | abcaa17 | 15/15 new + FULL suite (17 files, 516 checks) |
-| 11 | feature/map1-npc-spawn-markers | 10 | ✅ | (head of branch) | 7/7 new + FULL suite (18 files, 523 checks) |
-| 12 | feature/map1-prop-slots | 11 | ⏳ | — | — |
+| 11 | feature/map1-npc-spawn-markers | 10 | ✅ | e0e1ae1 | 7/7 new + FULL suite (18 files, 523 checks) |
+| 12 | feature/map1-prop-slots | 11 | ✅ | (head of branch) | 10/10 new + FULL suite (19 files, 533 checks) |
 | 13 | feature/map1-kenney-dressing | 12 | ⏳ | — | — |
 | 14 | feature/web-export-smoke-test | 13 | ⏳ | — | — |
 | 15 | feature/itch-playtest-build | 14 | ⏳ | — | — |
@@ -280,6 +280,26 @@ evidence. Manual/external validation is never claimed.
   marker positions, no reuse). FULL suite: 18 files, 523 checks green.
 - Manual (Travis): marker plausibility once furniture exists (corners,
   under tables) — expected to shift during the dressing pass.
+
+### 12 · feature/map1-prop-slots — ✅
+
+- Changed: `scripts/props/static_prop.gd` + three colored decoy scenes
+  (`scenes/props/static_prop_{carton,bucket,cup}.tscn` — StaticBody3D,
+  NEVER pure white, dims mirror the player prop forms),
+  `maps/map1_house.tscn` (31 decoys: a LARGE spot in EVERY room per
+  SPEC.md 13, 10 medium + 12 small scatter, all with ≥ 0.8 m NPC-marker
+  clearance), `tests/map1_prop_slots_test.gd` (new).
+- ALSO: root-caused the cooldown/rotation flake for real this time —
+  frame-level tracing caught a capsule being DRAGGED 7.6 m in one frame:
+  CharacterBody3D treats a neighbor capsule it stands on as a MOVING
+  PLATFORM and inherits its teleport displacement. Production fix:
+  `platform_floor_layers = 0` / `platform_wall_layers = 0` on the capsule
+  (players never ride players; also fixes real-game drag on Phase 9's
+  swap-teleport). The cooldown test also gained all-three-world phase
+  gating and deterministic cooldown-expiry predicates.
+- Tests (2026-07-15): new test PASS 10/10 (red first), cooldown 12/12
+  consecutive after the fix. FULL suite: 19 files, 533 checks green.
+- Manual (Travis): decoy plausibility/readability judgment.
 
 ## Risks / open items (running list)
 

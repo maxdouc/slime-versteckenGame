@@ -148,6 +148,13 @@ func _enter_tree() -> void:
 	var peer_id := str(name).to_int()
 	if peer_id > 0:
 		set_multiplayer_authority(peer_id)
+	# Never ride "moving platforms": the only movers are OTHER PLAYERS, and
+	# move_and_slide would drag whoever stands on one along with its synced
+	# teleports (verified: a capsule standing on a neighbor got carried 7.6 m
+	# to the neighbor's teleport target). Static floors don't move — riding
+	# adds nothing here, so switch it off entirely.
+	platform_floor_layers = 0
+	platform_wall_layers = 0
 	_ensure_input_actions()
 
 func _ready() -> void:
