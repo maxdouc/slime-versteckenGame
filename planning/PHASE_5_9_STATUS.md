@@ -22,8 +22,8 @@ evidence. Manual/external validation is never claimed.
 | 7 | feature/seeker-splatter | 6 | ✅ | 474d114 | 15/15 new + FULL suite (14 files, 471 checks) |
 | 8 | feature/seeker-cooldown | 7 | ✅ | 953f07e | 13/13 new + FULL suite (15 files, 484 checks) |
 | 9 | feature/spectator-mode | 8 | ✅ | 271f549 | 17/17 new + FULL suite (16 files, 501 checks) |
-| 10 | feature/map1-house-graybox | 9 | ✅ | (head of branch) | 15/15 new + FULL suite (17 files, 516 checks) |
-| 11 | feature/map1-npc-spawn-markers | 10 | ⏳ | — | — |
+| 10 | feature/map1-house-graybox | 9 | ✅ | abcaa17 | 15/15 new + FULL suite (17 files, 516 checks) |
+| 11 | feature/map1-npc-spawn-markers | 10 | ✅ | (head of branch) | 7/7 new + FULL suite (18 files, 523 checks) |
 | 12 | feature/map1-prop-slots | 11 | ⏳ | — | — |
 | 13 | feature/map1-kenney-dressing | 12 | ⏳ | — | — |
 | 14 | feature/web-export-smoke-test | 13 | ⏳ | — | — |
@@ -267,6 +267,19 @@ evidence. Manual/external validation is never claimed.
   FULL suite incl. boot on the new map: 17 files, 516 checks — green.
 - Manual (Travis): walkthrough scale/camera-in-doorways judgment, room
   color readability, two-machine roam.
+
+### 11 · feature/map1-npc-spawn-markers — ✅
+
+- Changed: `maps/map1_house.tscn` (30 npc_spawn markers: 3 per room + one
+  extra in Küche/Flur/Wohnzimmer, floor height, none in the seeker box —
+  regenerated via the same one-shot generator; the diff includes some
+  serializer reordering, structure verified by the graybox test),
+  `tests/map1_npc_markers_test.gd` (new).
+- Tests (2026-07-14): new test PASS 7/7 (red first: 0 markers) — placement
+  rules + an OFFLINE NpcManager integration spawn on the real map (distinct
+  marker positions, no reuse). FULL suite: 18 files, 523 checks green.
+- Manual (Travis): marker plausibility once furniture exists (corners,
+  under tables) — expected to shift during the dressing pass.
 
 ## Risks / open items (running list)
 
