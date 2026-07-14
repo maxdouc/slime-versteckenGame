@@ -19,8 +19,8 @@ evidence. Manual/external validation is never claimed.
 | 4 | feature/rotation-timer | 3 | ✅ | b4425f8 | 24/24 new + full regression |
 | 5 | feature/win-lose-reset | 4 | ✅ | 2837358 | 26/26 new + FULL suite (12 files, 437 checks) |
 | 6 | feature/paintball-gun | 5 | ✅ | 1ba2783 | 19/19 new + FULL suite (13 files, 456 checks) |
-| 7 | feature/seeker-splatter | 6 | ✅ | (head of branch) | 15/15 new + FULL suite (14 files, 471 checks) |
-| 8 | feature/seeker-cooldown | 7 | ⏳ | — | — |
+| 7 | feature/seeker-splatter | 6 | ✅ | 474d114 | 15/15 new + FULL suite (14 files, 471 checks) |
+| 8 | feature/seeker-cooldown | 7 | ✅ | (head of branch) | 13/13 new + FULL suite (15 files, 484 checks) |
 | 9 | feature/spectator-mode | 8 | ⏳ | — | — |
 | 10 | feature/map1-house-graybox | 9 | ⏳ | — | — |
 | 11 | feature/map1-npc-spawn-markers | 10 | ⏳ | — | — |
@@ -216,6 +216,23 @@ evidence. Manual/external validation is never claimed.
   FULL suite: 14 files, 471 checks, boot, diff — all green.
 - Manual (Travis): splatter look/size on surfaces, spray readability on
   props, two-machine.
+
+### 8 · feature/seeker-cooldown — ✅
+
+- Changed: `scripts/seeker/seeker_combat.gd` (host cooldown ledger keyed on
+  MISSES only — spec-literal "Fehlschuss = 4-s-Cooldown"; a hit re-arms
+  instantly; value from GameState.paintball_cooldown; per-shooter HUD
+  notify; cleared with projectiles on phase change/reset), round HUD
+  ("Nachladen… n.n s" countdown), `tests/cooldown_test.gd` (new, 3 peers
+  so a hit doesn't end the round). Earlier Phase 6 tests updated to shrink
+  the host cooldown setting and wait it out between shots (they predate
+  the mechanic).
+- Note for playtest (SPEC.md 11 Rechenbasis): hit-⇒-no-cooldown is the
+  literal reading; if it proves too generous, the ledger keys on
+  report_hit too — one-line change.
+- Tests (2026-07-14): new test PASS 13/13 (red first: cooldown_left
+  missing). FULL suite: 15 files, 484 checks, boot, diff — green.
+- Manual (Travis): reload feel at the real 4 s, HUD readability.
 
 ## Risks / open items (running list)
 

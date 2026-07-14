@@ -30,6 +30,7 @@ signal shot_missed(seeker_id: int)
 var _game_state: Node = null
 var _next_shot_id := 0
 var _in_flight := {}  # seeker_id -> shot_id (host only)
+var _cooldown_until := {}  # seeker_id -> Time.get_ticks_msec() deadline (host only)
 
 @onready var _projectiles: Node3D = get_node(projectiles_path)
 @onready var _spawner: MultiplayerSpawner = get_node(spawner_path)
@@ -43,6 +44,13 @@ func _ready() -> void:
 
 func in_flight_of(seeker_id: int) -> bool:
 	return _in_flight.has(seeker_id)
+
+## Host truth: seconds of miss penalty left for this seeker (SPEC.md 11 —
+## "Miss-Penalty: Nur Cooldown", default 4 s via GameState.paintball_cooldown).
+func cooldown_left(seeker_id: int) -> float:
+	if not _cooldown_until.has(seeker_id):
+		return 0.0
+	return maxf(0.0, float(_cooldown_until[seeker_id] - Time.get_ticks_msec()) / 1000.0)
 
 ## Shooter-side entry point: clients route to the host, the host (and
 ## offline play) validates directly. Coordinates are PARENT-RELATIVE (the
@@ -67,6 +75,8 @@ func request_fire(seeker_id: int, origin: Vector3, dir: Vector3) -> void:
 		return
 	if _in_flight.has(seeker_id):
 		return  # one paintball in the air per seeker
+	if cooldown_left(seeker_id) > 0.0:
+		return  # still reloading from the last miss
 	if dir.length_squared() < 0.5:
 		return
 	var players_node := get_node_or_null(players_path)
@@ -82,15 +92,32 @@ func request_fire(seeker_id: int, origin: Vector3, dir: Vector3) -> void:
 
 ## --- Reported by the projectile (host side) ---------------------------------
 
+## A hit releases the in-flight lock with NO cooldown — spec-literal:
+## "Fehlschuss = 4-s-Cooldown" penalizes the miss, not the shot.
 func report_hit(_shot_id: int, seeker_id: int) -> void:
 	_in_flight.erase(seeker_id)
 	shot_hit.emit(seeker_id)
 
 ## `world_pos`/`world_normal` are Vector3 for map impacts and NAN-position for
-## a lifetime fizzle; the splatter branch consumes them.
+## a lifetime fizzle; the splatter branch consumes them. Every miss starts the
+## host-adjustable cooldown and tells the shooter's HUD.
 func report_miss(_shot_id: int, seeker_id: int, _world_pos: Variant, _world_normal: Variant) -> void:
 	_in_flight.erase(seeker_id)
+	var seconds := 4.0
+	if _game_state != null:
+		seconds = float(_game_state.paintball_cooldown)
+	_cooldown_until[seeker_id] = Time.get_ticks_msec() + int(seconds * 1000.0)
+	var my_id := multiplayer.get_unique_id() if RoundLocator.has_real_peer(self) else 1
+	if seeker_id == my_id:
+		_notify_cooldown(seconds)  # the host itself is the shooter
+	elif RoundLocator.has_real_peer(self):
+		_notify_cooldown.rpc_id(seeker_id, seconds)
 	shot_missed.emit(seeker_id)
+
+## Runs on the SHOOTER's machine only: HUD reload feedback.
+@rpc("authority", "reliable")
+func _notify_cooldown(seconds: float) -> void:
+	get_tree().call_group("round_hud", "set_cooldown", seconds)
 
 ## --- Lifecycle ----------------------------------------------------------------
 
@@ -101,6 +128,7 @@ func _on_phase_changed(phase: int) -> void:
 ## Host despawns leftovers (spawner replicates); everyone drops local state.
 func _clear_projectiles() -> void:
 	_in_flight.clear()
+	_cooldown_until.clear()
 	if _game_state != null and _game_state.is_round_authority():
 		for projectile in _projectiles.get_children():
 			projectile.queue_free()

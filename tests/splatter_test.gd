@@ -191,6 +191,7 @@ func _run_tests() -> void:
 	host.gs.hunt_seconds = 30.0
 	host.gs.end_seconds = 0.5
 	host.gs.rotation_seconds = 30.0
+	host.gs.paintball_cooldown = 0.3  # shrunk so shot sequences stay fast
 
 	host.gs.start_round()
 	var prep_pred := func() -> bool:
@@ -243,6 +244,7 @@ func _run_tests() -> void:
 
 	# --- Near miss sprays the transformed hider's prop -------------------------------
 	print("[splatter_test] near miss sprays the hider prop")
+	await _until(func() -> bool: return false, 0.45)  # let the miss cooldown expire
 	seeker_own.global_position = seeker_world.world.position + Vector3(-1.2, 1.0, 1.6)
 	seeker_own.velocity = Vector3.ZERO
 	hider_own.global_position = hider_world.world.position + Vector3(-2.0, 1.0, 3.0)

@@ -25,12 +25,14 @@ const NOTICE_SECONDS := 2.5
 @onready var _notice_label: Label = $NoticeLabel
 @onready var _ghost_banner: Label = $GhostBanner
 @onready var _crosshair: Label = $Crosshair
+@onready var _cooldown_label: Label = $CooldownLabel
 @onready var _end_panel: PanelContainer = $EndPanel
 @onready var _result_label: Label = $EndPanel/VBox/ResultLabel
 @onready var _outcome_label: Label = $EndPanel/VBox/OutcomeLabel
 
 var _game_state: Node = null
 var _notice_left := 0.0
+var _cooldown_left := 0.0
 
 func _ready() -> void:
 	add_to_group("round_hud")  # capsules push interaction prompts here
@@ -60,11 +62,19 @@ func set_rotation_status(text: String, warn: bool) -> void:
 	_rotation_label.visible = text != ""
 	_rotation_label.modulate = Color(1.0, 0.35, 0.3) if warn else Color.WHITE
 
+## Pushed by SeekerCombat after a miss: reload feedback for the shooter.
+func set_cooldown(seconds: float) -> void:
+	_cooldown_left = seconds
+
 func _process(_delta: float) -> void:
 	if _notice_left > 0.0:
 		_notice_left -= _delta
 		if _notice_left <= 0.0:
 			_notice_label.visible = false
+	if _cooldown_left > 0.0:
+		_cooldown_left = maxf(_cooldown_left - _delta, 0.0)
+		_cooldown_label.text = "Nachladen… %.1f s" % _cooldown_left
+	_cooldown_label.visible = _cooldown_left > 0.0
 	_phase_label.text = _game_state.phase_title()
 	if _game_state.current_phase == _game_state.Phase.LOBBY:
 		_timer_label.text = "—"

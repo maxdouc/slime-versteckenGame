@@ -171,6 +171,7 @@ func _run_tests() -> void:
 	host.gs.hunt_seconds = 30.0
 	host.gs.end_seconds = 0.6
 	host.gs.rotation_seconds = 30.0  # rotation must not interfere
+	host.gs.paintball_cooldown = 0.3  # shrunk so shot sequences stay fast
 
 	var hits: Array = []
 	var misses: Array = []
@@ -252,6 +253,7 @@ func _run_tests() -> void:
 
 	# --- Kill shot: direct hit eliminates and ends the round -------------------------
 	print("[paintball_test] kill shot")
+	await _until(func() -> bool: return false, 0.45)  # let the miss cooldown expire
 	_check(host.gs.is_alive(hider_id), "hider still alive before the kill shot")
 	var aim_from := Vector3(4.0, 1.2, 0.0)
 	var target: Vector3 = hider_own.position + Vector3(0.0, 0.45, 0.0)  # center mass
