@@ -142,6 +142,29 @@ grow_horizontal = 2
 text = "Du bist raus — Zuschauer"
 horizontal_alignment = 1
 
+[node name="DeadChatBox" type="VBoxContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -150.0
+offset_right = 300.0
+offset_bottom = -8.0
+grow_vertical = 0
+
+[node name="ChatLog" type="Label" parent="DeadChatBox"]
+layout_mode = 2
+size_flags_vertical = 3
+vertical_alignment = 2
+autowrap_mode = 2
+
+[node name="ChatInput" type="LineEdit" parent="DeadChatBox"]
+layout_mode = 2
+placeholder_text = "Totenchat…"
+max_length = 200
+
 [node name="EndPanel" type="PanelContainer" parent="."]
 visible = false
 layout_mode = 1

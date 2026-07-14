@@ -61,6 +61,7 @@ const Eyedropper := preload("res://scripts/paint/eyedropper.gd")
 const RoundLocator := preload("res://scripts/round/round_locator.gd")
 const Progression := preload("res://scripts/round/progression.gd")
 const PaintHudScene := preload("res://scenes/paint_hud.tscn")
+const SpectatorCameraScene := preload("res://scenes/spectator_camera.tscn")
 
 const WALK_SPEED: float = 5.0  # slime base speed; forms scale it — max_speed()
 const ACCELERATION: float = 25.0  # m/s² while there is movement input
@@ -117,9 +118,11 @@ var _slurp_npc: Node3D = null
 
 ## Ghost state (feature/win-lose-reset): eliminated players and mid-round
 ## joiners are invisible, non-colliding and input-dead until the round resets
-## (SPEC.md 5.3 — the free spectator camera arrives in Phase 6). Derived from
-## the replicated registry on EVERY peer, so remote copies ghost themselves.
+## (SPEC.md 5.3). Derived from the replicated registry on EVERY peer, so
+## remote copies ghost themselves. On the OWNING machine, ghosting also
+## hands the view to the free spectator rig (feature/spectator-mode).
 var _ghosted := false
+var _spectator_rig: Node3D = null
 
 ## Current form: PlayerForms.SLIME or a PlayerForms.PROPS key. Replicated via
 ## the MultiplayerSynchronizer (on change + spawn state); remote copies and
@@ -597,8 +600,37 @@ func _refresh_ghost() -> void:
 	# re-registers the collider at the current synced transform. Deferred —
 	# shape toggles must not land while the physics space is flushing.
 	_collision.set_deferred("disabled", should)
-	if should and is_multiplayer_authority() and _paint_mode:
-		_exit_paint_mode()
+	if is_multiplayer_authority():
+		if should and _paint_mode:
+			_exit_paint_mode()
+		if should:
+			_enter_spectator()
+		else:
+			_exit_spectator()
+
+## The dead watch through a free-fly rig next to the corpse (SPEC.md 5.3);
+## LOCAL-ONLY, parented to the world so the invisible body doesn't drag it.
+func _enter_spectator() -> void:
+	if _spectator_rig != null or _game_state == null:
+		return
+	var world := _game_state.get_parent()
+	if world == null:
+		return
+	_spectator_rig = SpectatorCameraScene.instantiate()
+	world.add_child(_spectator_rig)
+	_spectator_rig.global_position = global_position + Vector3(0.0, 2.0, 0.0)
+
+func _exit_spectator() -> void:
+	if _spectator_rig == null:
+		return
+	if is_instance_valid(_spectator_rig):
+		_spectator_rig.queue_free()
+	_spectator_rig = null
+	if _camera != null and is_instance_valid(_camera):
+		_camera.current = true
+
+func _exit_tree() -> void:
+	_exit_spectator()  # a despawning capsule never strands its rig
 
 ## Full per-round reset (SPEC.md 5.3): back to slime (wipes paint via the
 ## epoch), back to the spawn, dry floor. The registry cleared by the host

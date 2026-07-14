@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/lobby_ui.tscn" id="2_lobby_ui"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/round/npc_manager.gd" id="5_npc_manager"]
 [ext_resource type="Script" path="res://scripts/seeker/seeker_combat.gd" id="6_seeker_combat"]
 [ext_resource type="Script" path="res://scripts/seeker/splatter_manager.gd" id="7_splatter_manager"]
+[ext_resource type="Script" path="res://scripts/round/dead_chat.gd" id="8_dead_chat"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -41,6 +42,9 @@ script = ExtResource("6_seeker_combat")
 
 [node name="SplatterManager" type="Node" parent="."]
 script = ExtResource("7_splatter_manager")
+
+[node name="DeadChat" type="Node" parent="."]
+script = ExtResource("8_dead_chat")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 

@@ -20,8 +20,8 @@ evidence. Manual/external validation is never claimed.
 | 5 | feature/win-lose-reset | 4 | ✅ | 2837358 | 26/26 new + FULL suite (12 files, 437 checks) |
 | 6 | feature/paintball-gun | 5 | ✅ | 1ba2783 | 19/19 new + FULL suite (13 files, 456 checks) |
 | 7 | feature/seeker-splatter | 6 | ✅ | 474d114 | 15/15 new + FULL suite (14 files, 471 checks) |
-| 8 | feature/seeker-cooldown | 7 | ✅ | (head of branch) | 13/13 new + FULL suite (15 files, 484 checks) |
-| 9 | feature/spectator-mode | 8 | ⏳ | — | — |
+| 8 | feature/seeker-cooldown | 7 | ✅ | 953f07e | 13/13 new + FULL suite (15 files, 484 checks) |
+| 9 | feature/spectator-mode | 8 | ✅ | (head of branch) | 17/17 new + FULL suite (16 files, 501 checks) |
 | 10 | feature/map1-house-graybox | 9 | ⏳ | — | — |
 | 11 | feature/map1-npc-spawn-markers | 10 | ⏳ | — | — |
 | 12 | feature/map1-prop-slots | 11 | ⏳ | — | — |
@@ -233,6 +233,23 @@ evidence. Manual/external validation is never claimed.
 - Tests (2026-07-14): new test PASS 13/13 (red first: cooldown_left
   missing). FULL suite: 15 files, 484 checks, boot, diff — green.
 - Manual (Travis): reload feel at the real 4 s, HUD readability.
+
+### 9 · feature/spectator-mode — ✅  (PHASE 6 COMPLETE — implementation)
+
+- Changed: `scripts/round/spectator_camera.gd` + `scenes/spectator_camera.tscn`
+  (new — local-only free-fly rig: WASD camera-relative, Space/Ctrl
+  rise/sink, mouse look; spawned next to the corpse), `scripts/round/dead_chat.gd`
+  (new — host-relayed dead-only chat: dead-sender gate + dead-only fan-out
+  server-side, never in the UI), `scripts/player_capsule.gd` (ghosting on
+  the OWNING machine now hands the view to the rig; reset restores the
+  player camera; _exit_tree never strands a rig), round HUD (Totenchat box
+  + log while dead), `scenes/main.tscn` (DeadChat), `tests/spectator_test.gd`
+  (new).
+- Tests (2026-07-14): new test PASS 17/17 (red first: dead_chat.gd
+  missing) — rig only on the dead machine, chat isolation verified in both
+  directions, END-screen chat between two dead peers, reset cleanup.
+  PHASE 6 EXIT SUITE: 16 files, 501 checks, boot, diff — all green.
+- Manual (Travis): fly feel, chat usability, END-screen flow, two-machine.
 
 ## Risks / open items (running list)
 
