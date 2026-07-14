@@ -12,12 +12,19 @@ const SPAWN_RING_RADIUS: float = 2.0
 
 @onready var _players: Node3D = $Players
 @onready var _spawner: MultiplayerSpawner = $PlayerSpawner
-@onready var _spawn_point: Marker3D = $GrayRoom/PlayerSpawnPoint
+
+## Found by GROUP, not by path: the map decides where players spawn
+## (Phase 7 — gray_room.tscn and maps/map1_house.tscn both tag a
+## player_spawn marker, so swapping maps never touches this script).
+var _spawn_point: Marker3D = null
 
 func _ready() -> void:
 	print("[Slime-Verstecken] Boot OK — Godot ", Engine.get_version_info()["string"])
 	print("[Net] autoload ready, max players = ", Net.MAX_PLAYERS)
 	print("[GameState] starting phase = ", GameState.phase_name())
+	var spawn_markers := get_tree().get_nodes_in_group("player_spawn")
+	if spawn_markers.size() > 0:
+		_spawn_point = spawn_markers[0]
 
 	_spawner.spawn_function = _spawn_capsule
 	Net.lobby_created.connect(_on_lobby_created)
@@ -52,5 +59,6 @@ func _spawn_capsule(data: Variant) -> Node:
 
 func _spawn_position(slot: int) -> Vector3:
 	# Fan spawns in a ring around the marker so capsules never stack.
+	var center := _spawn_point.global_position if _spawn_point != null else Vector3(0, 1, 0)
 	var angle := float(slot) * TAU / float(Net.MAX_PLAYERS)
-	return _spawn_point.position + Vector3(cos(angle), 0.0, sin(angle)) * SPAWN_RING_RADIUS
+	return center + Vector3(cos(angle), 0.0, sin(angle)) * SPAWN_RING_RADIUS

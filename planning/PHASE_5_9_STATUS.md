@@ -21,8 +21,8 @@ evidence. Manual/external validation is never claimed.
 | 6 | feature/paintball-gun | 5 | ✅ | 1ba2783 | 19/19 new + FULL suite (13 files, 456 checks) |
 | 7 | feature/seeker-splatter | 6 | ✅ | 474d114 | 15/15 new + FULL suite (14 files, 471 checks) |
 | 8 | feature/seeker-cooldown | 7 | ✅ | 953f07e | 13/13 new + FULL suite (15 files, 484 checks) |
-| 9 | feature/spectator-mode | 8 | ✅ | (head of branch) | 17/17 new + FULL suite (16 files, 501 checks) |
-| 10 | feature/map1-house-graybox | 9 | ⏳ | — | — |
+| 9 | feature/spectator-mode | 8 | ✅ | 271f549 | 17/17 new + FULL suite (16 files, 501 checks) |
+| 10 | feature/map1-house-graybox | 9 | ✅ | (head of branch) | 15/15 new + FULL suite (17 files, 516 checks) |
 | 11 | feature/map1-npc-spawn-markers | 10 | ⏳ | — | — |
 | 12 | feature/map1-prop-slots | 11 | ⏳ | — | — |
 | 13 | feature/map1-kenney-dressing | 12 | ⏳ | — | — |
@@ -250,6 +250,23 @@ evidence. Manual/external validation is never claimed.
   directions, END-screen chat between two dead peers, reset cleanup.
   PHASE 6 EXIT SUITE: 16 files, 501 checks, boot, diff — all green.
 - Manual (Travis): fly feel, chat usability, END-screen flow, two-machine.
+
+### 10 · feature/map1-house-graybox — ✅
+
+- Changed: `maps/map1_house.tscn` (new — Wohnhaus graybox: 3×3 grid of
+  6×6 m rooms with the Flur as the central hub, 12 doorways ≥ 1.6 m so
+  EVERY room has ≥ 2 exits (SPEC.md 13 anti-death-trap rule), one flat
+  repaintable floor color per room, 9 RoomVolumes on the Phase 5
+  convention, doorway markers so exits are machine-checkable, sealed
+  seeker box north of the house, spawn markers by group; scene generated
+  via a one-shot script and committed as canonical data),
+  `scenes/main.tscn` (GrayRoom → Map1House), `scripts/main.gd` (spawn
+  marker found by GROUP, not path — maps decide spawns now),
+  `tests/map1_graybox_test.gd` (new). gray_room.tscn stays for tests.
+- Tests (2026-07-14): new test PASS 15/15 (red first: scene missing).
+  FULL suite incl. boot on the new map: 17 files, 516 checks — green.
+- Manual (Travis): walkthrough scale/camera-in-doorways judgment, room
+  color readability, two-machine roam.
 
 ## Risks / open items (running list)
 

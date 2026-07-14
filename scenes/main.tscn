@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/lobby_ui.tscn" id="2_lobby_ui"]
-[ext_resource type="PackedScene" path="res://scenes/gray_room.tscn" id="3_gray_room"]
+[ext_resource type="PackedScene" path="res://maps/map1_house.tscn" id="3_map1_house"]
 [ext_resource type="PackedScene" path="res://scenes/round_hud.tscn" id="4_round_hud"]
 [ext_resource type="Script" path="res://scripts/round/npc_manager.gd" id="5_npc_manager"]
 [ext_resource type="Script" path="res://scripts/seeker/seeker_combat.gd" id="6_seeker_combat"]
@@ -15,7 +15,7 @@ script = ExtResource("1_main")
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.791, 0.612, 0, -0.612, 0.791, 0, 9, 11)
 
-[node name="GrayRoom" parent="." instance=ExtResource("3_gray_room")]
+[node name="Map1House" parent="." instance=ExtResource("3_map1_house")]
 
 [node name="Players" type="Node3D" parent="."]
 
