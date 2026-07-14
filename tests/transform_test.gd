@@ -219,7 +219,15 @@ func _run_tests() -> void:
 	await process_frame
 	await process_frame
 	_check(remote.get_node_or_null("CameraPivot") == null, "remote copy frees its camera rig")
-	_check(not remote.is_physics_processing(), "remote copy runs no local physics")
+	# Since the ghost-collider hardening, copies DO keep _physics_process — but
+	# only to pin their collider to the synced transform. The contract is
+	# behavioral: a copy never SIMULATES itself (no gravity, no movement).
+	var parked: Vector3 = remote.position
+	remote.velocity = Vector3(3.0, 0.0, 0.0)  # a simulating body would drift
+	for _i in 12:
+		await process_frame
+	_check(remote.position.is_equal_approx(parked),
+			"remote copy runs no local simulation (parked in mid-air, no drift)")
 	var local_cam: Camera3D = player.get_node("CameraPivot/SpringArm3D/Camera3D")
 	_check(root.get_camera_3d() == local_cam, "the local player's camera stays current")
 	_check(remote.get_node_or_null("Visual/SlimeVisual") != null

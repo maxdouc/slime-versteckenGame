@@ -28,6 +28,15 @@ const TIMEOUT_SEC := 150.0
 
 const WEST := Vector3(-3.0, 1.0, 0.0)
 const EAST := Vector3(3.0, 1.0, 0.0)
+# Each round parks at FRESH coordinates: a corpse from the previous round may
+# leave residual physics state at its exact death spot in the shared-space
+# test harness (players never teleport onto a corpse in real play — the
+# real-machine ghost/reset check stays on the manual list).
+const WEST_R2 := Vector3(-4.0, 1.0, -3.0)
+const EAST_R2 := Vector3(4.0, 1.0, -3.0)
+const WEST_R3 := Vector3(-4.0, 1.0, 3.0)
+const EAST_R3 := Vector3(4.0, 1.0, 3.0)
+const IDLE_R4 := Vector3(-2.0, 1.0, 4.0)
 
 var _checks := 0
 var _failures := 0
@@ -273,12 +282,12 @@ func _run_tests() -> void:
 
 	# --- Round 2: room change past the dwell resets the timer ---------------------
 	print("[rotation_timer_test] round 2: confirmed room change resets")
-	hider_id = await _start_hunt_round(host, client, WEST)
+	hider_id = await _start_hunt_round(host, client, WEST_R2)
 	var hider_world: Dictionary = client if hider_id == client_id else host
 	var capsule: CharacterBody3D = hider_world.players.get_node(str(hider_id))
 	var hunt_t0 := _elapsed
 	await _wait(0.5)  # half the rotation budget spent in WEST
-	capsule.global_position = hider_world.world.position + EAST  # move to EAST
+	capsule.global_position = hider_world.world.position + EAST_R2  # to EAST
 	capsule.velocity = Vector3.ZERO
 	# Old-timer deadline would be t0 + 1.0 + 0.4 = 1.4. Confirmation lands at
 	# ~0.75; the fresh deadline is ~0.75 + 1.4 = 2.15. Probe at 1.7: must live.
@@ -294,15 +303,15 @@ func _run_tests() -> void:
 
 	# --- Round 3: a door-sill bounce does NOT reset --------------------------------
 	print("[rotation_timer_test] round 3: bounce inside the dwell does not reset")
-	hider_id = await _start_hunt_round(host, client, WEST)
+	hider_id = await _start_hunt_round(host, client, WEST_R3)
 	hider_world = client if hider_id == client_id else host
 	capsule = hider_world.players.get_node(str(hider_id))
 	var t0 := _elapsed
 	await _wait(0.1)
-	capsule.global_position = hider_world.world.position + EAST  # into EAST…
+	capsule.global_position = hider_world.world.position + EAST_R3  # into EAST…
 	capsule.velocity = Vector3.ZERO
 	await _wait(0.1)  # …for only 0.1 s (dwell is 0.25)
-	capsule.global_position = hider_world.world.position + WEST  # bounce back
+	capsule.global_position = hider_world.world.position + WEST_R3  # bounce back
 	capsule.velocity = Vector3.ZERO
 	# No reset: death by roughly t0 + 1.4 (+ sync slack). Assert dead by 2.4.
 	var died3 := await _until(dead_pred, 3.0)
@@ -327,7 +336,7 @@ func _run_tests() -> void:
 			prep_hider = id
 	var prep_world: Dictionary = client if prep_hider == client_id else host
 	var prep_capsule: CharacterBody3D = prep_world.players.get_node(str(prep_hider))
-	prep_capsule.global_position = prep_world.world.position + WEST
+	prep_capsule.global_position = prep_world.world.position + IDLE_R4
 	prep_capsule.velocity = Vector3.ZERO
 	await _wait(2.0)  # well past rotation (1.0) + grace (0.4)
 	_check(host.gs.is_alive(prep_hider), "hider alive after 2 s idling in PREP")

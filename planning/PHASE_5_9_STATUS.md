@@ -17,8 +17,8 @@ evidence. Manual/external validation is never claimed.
 | 2 | feature/npc-slimes-feeding | 1 | ✅ | df5973e | 25/25 new + full regression |
 | 3 | feature/eat-progression-table | 2 | ✅ | ad51c77 | 39/39 new + full regression |
 | 4 | feature/rotation-timer | 3 | ✅ | b4425f8 | 24/24 new + full regression |
-| 5 | feature/win-lose-reset | 4 | ✅ | (head of branch) | 26/26 new + FULL suite (12 files, 437 checks) |
-| 6 | feature/paintball-gun | 5 | ⏳ | — | — |
+| 5 | feature/win-lose-reset | 4 | ✅ | 2837358 | 26/26 new + FULL suite (12 files, 437 checks) |
+| 6 | feature/paintball-gun | 5 | ✅ | (head of branch) | 19/19 new + FULL suite (13 files, 456 checks) |
 | 7 | feature/seeker-splatter | 6 | ⏳ | — | — |
 | 8 | feature/seeker-cooldown | 7 | ⏳ | — | — |
 | 9 | feature/spectator-mode | 8 | ⏳ | — | — |
@@ -165,6 +165,38 @@ evidence. Manual/external validation is never claimed.
   total), boot exit 0, `git diff --check` clean.
 - Manual (Travis): full two-machine round — phases, feeding, unlocks,
   rotation drip, elimination ghosting, END screen, reset. HUD wording.
+
+### 6 · feature/paintball-gun — ✅
+
+- Changed: `scripts/seeker/seeker_combat.gd` + `scripts/seeker/paintball.gd`
+  + `scenes/paintball.tscn` (new — host-validated fire requests, RAY-SWEPT
+  host-side flight so 35 m/s never tunnels 0.2 m walls, direct hit on an
+  alive hider = elimination via the Phase 5 entry, one ball in flight per
+  seeker, shot_hit/shot_missed for the splatter + cooldown branches),
+  `scenes/main.tscn` (Projectiles/ProjectileSpawner/SeekerCombat),
+  `scripts/player_capsule.gd` (LMB fire for armed seekers + crosshair
+  state), round HUD crosshair, `tests/paintball_test.gd` (new).
+- ALSO in this branch — ghost-collider hardening after a real bug hunt:
+  the rotation test flaked (~40 %) because capsules parked on a previous
+  round's exact death spot got depenetration-launched by residual physics
+  state in the shared-space test harness. Evidence trail: phantom collider
+  named by shape query (`ClientWorld/Players/1` body at the death spot
+  while its node showed the seeker box). Production hardenings shipped:
+  (1) ghosts disable their collision SHAPE (walk-through corpses, clean
+  re-registration), (2) remote copies pin their collider to the synced
+  transform every physics tick — protects host-side paintball raycasts
+  too. Phase 3's transform test updated to assert the copy contract
+  behaviorally (no self-simulation) instead of is_physics_processing().
+  Residual harness artifact avoided by parking each test round at fresh
+  coordinates; real-machine ghost/reset behavior stays on Travis' manual
+  checklist (it always was).
+- Tests (2026-07-14): paintball 19/19 (red first: missing combat script;
+  then a test-geometry fix — the wall shot originally flew through the
+  hider's parking spot). rotation_timer 12/12 + 3/3 consecutive green
+  after the fix. FULL suite: 13 files, 456 checks, all exit 0; boot ok;
+  `git diff --check` clean.
+- Manual (Travis): aim feel, projectile speed/arc, two-machine hit
+  registration, crosshair readability.
 
 ## Risks / open items (running list)
 

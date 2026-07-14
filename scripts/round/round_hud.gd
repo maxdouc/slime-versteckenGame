@@ -24,6 +24,7 @@ const NOTICE_SECONDS := 2.5
 @onready var _prompt_progress: ProgressBar = $Prompt/PromptProgress
 @onready var _notice_label: Label = $NoticeLabel
 @onready var _ghost_banner: Label = $GhostBanner
+@onready var _crosshair: Label = $Crosshair
 @onready var _end_panel: PanelContainer = $EndPanel
 @onready var _result_label: Label = $EndPanel/VBox/ResultLabel
 @onready var _outcome_label: Label = $EndPanel/VBox/OutcomeLabel
@@ -76,6 +77,7 @@ func _process(_delta: float) -> void:
 	_start_button.visible = _game_state.can_start_round()
 	_update_ghost_banner()
 	_update_end_panel()
+	_update_crosshair()
 
 func _on_start_pressed() -> void:
 	_game_state.start_round()
@@ -106,6 +108,12 @@ func _update_ghost_banner() -> void:
 	_ghost_banner.visible = _game_state.current_phase != _game_state.Phase.LOBBY \
 			and _game_state.current_phase != _game_state.Phase.END \
 			and _game_state.players.has(me) and not _game_state.is_alive(me)
+
+## Crosshair for the armed seeker (SPEC.md 11 — aim down the camera center).
+func _update_crosshair() -> void:
+	var me := _me()
+	_crosshair.visible = _game_state.current_phase == _game_state.Phase.HUNT \
+			and _game_state.is_seeker(me) and _game_state.is_alive(me)
 
 ## END screen (SPEC.md 5.3): winner side + the personal outcome. No score.
 func _update_end_panel() -> void:
