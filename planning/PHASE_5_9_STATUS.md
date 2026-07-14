@@ -12,8 +12,8 @@ evidence. Manual/external validation is never claimed.
 
 | # | Branch | Parent | Status | SHA | Tests |
 |---|--------|--------|--------|-----|-------|
-| 0 | planning/phase-5-9-execution | main | 🔨 | — | — |
-| 1 | feature/round-phases | 0 | ⏳ | — | — |
+| 0 | planning/phase-5-9-execution | main | ✅ | bd82bbe | n/a (docs) |
+| 1 | feature/round-phases | 0 | ✅ | (head of branch) | 42/42 new + full regression |
 | 2 | feature/npc-slimes-feeding | 1 | ⏳ | — | — |
 | 3 | feature/eat-progression-table | 2 | ⏳ | — | — |
 | 4 | feature/rotation-timer | 3 | ⏳ | — | — |
@@ -52,9 +52,35 @@ evidence. Manual/external validation is never claimed.
 
 ## Per-branch evidence
 
-### 0 · planning/phase-5-9-execution — 🔨
+### 0 · planning/phase-5-9-execution — ✅ bd82bbe
 
 - Scope: this file + `planning/PHASE_5_9_EXECUTION.md`. No code.
+- SHA convention: a branch's own SHA lands in this table with the NEXT
+  branch's update (a commit cannot contain its own hash); the final report
+  lists every SHA from git directly.
+
+### 1 · feature/round-phases — ✅
+
+- Changed: `scripts/game_state.gd` (host-authoritative phase machine +
+  player registry + role assignment + late-join snapshot + disconnect
+  cleanup), `scripts/round/round_locator.gd` (new — ancestor-walk resolver
+  so test worlds carry their own GameState at the autoload's relative
+  path), `scripts/round/round_hud.gd` + `scenes/round_hud.tscn` (new),
+  `scenes/gray_room.tscn` (sealed SeekerSpawnRoom at x=+20 + spawn-marker
+  groups), `scenes/main.tscn` (RoundHud instance),
+  `scripts/player_capsule.gd` (role/phase teleport hooks),
+  `tests/round_phases_test.gd` (new).
+- Tests (2026-07-14, all exit 0):
+  - `tests/round_phases_test.gd` — PASS 42/42 (TDD: first run red — 3
+    scene-contract FAILs + missing `end_seconds` script error, then green).
+  - Regression: transform 80, speed_tiers 21, network_transform 36,
+    paint_prototype 52, eyedropper 26, grundieren 25, paint_sync 41 — all
+    PASS; headless boot exit 0 "Boot OK"; `git diff --check` clean.
+- Decisions recorded: mid-round joiners = spectators until next round;
+  solo round = 1 hider / 0 seekers (dev sandbox); offline (no real peer)
+  runs the same code path without RPCs.
+- Manual (Travis): two-machine phase flow, HUD readability, seeker box
+  blindness.
 
 ## Risks / open items (running list)
 

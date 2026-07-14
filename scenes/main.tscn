@@ -1,8 +1,9 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/lobby_ui.tscn" id="2_lobby_ui"]
 [ext_resource type="PackedScene" path="res://scenes/gray_room.tscn" id="3_gray_room"]
+[ext_resource type="PackedScene" path="res://scenes/round_hud.tscn" id="4_round_hud"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -20,3 +21,5 @@ spawn_path = NodePath("../Players")
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
 [node name="LobbyUI" parent="CanvasLayer" instance=ExtResource("2_lobby_ui")]
+
+[node name="RoundHud" parent="CanvasLayer" instance=ExtResource("4_round_hud")]

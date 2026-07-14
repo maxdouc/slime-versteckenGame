@@ -58,6 +58,7 @@ extends CharacterBody3D
 const PlayerForms := preload("res://scripts/player_forms.gd")
 const PropPainter := preload("res://scripts/paint/prop_painter.gd")
 const Eyedropper := preload("res://scripts/paint/eyedropper.gd")
+const RoundLocator := preload("res://scripts/round/round_locator.gd")
 const PaintHudScene := preload("res://scenes/paint_hud.tscn")
 
 const WALK_SPEED: float = 5.0  # slime base speed; forms scale it — max_speed()
@@ -99,6 +100,10 @@ var _orbit_dragging := false
 var _pending_paint := PackedVector2Array()  # screen points waiting for the physics tick
 var _eyedrop_pending := false  # Q pressed; resolves next physics tick
 var _paint_hud: CanvasLayer  # local player only (like the camera rig)
+
+## Round state (Phase 5) — resolved via the ancestor-walk locator, null when
+## no GameState exists above this capsule (focused tests spawn bare capsules).
+var _game_state: Node = null
 
 ## Current form: PlayerForms.SLIME or a PlayerForms.PROPS key. Replicated via
 ## the MultiplayerSynchronizer (on change + spawn state); remote copies and
@@ -142,6 +147,10 @@ func _ready() -> void:
 		# Remote copies need no camera rig; their facing arrives via the
 		# synchronizer as $Visual rotation.
 		_camera_pivot.queue_free()
+	_game_state = RoundLocator.locate(self)
+	if _game_state != null:
+		_game_state.roles_assigned.connect(_on_round_roles_assigned)
+		_game_state.phase_changed.connect(_on_round_phase_changed)
 	_apply_form()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -403,6 +412,46 @@ func _find_prop_mesh(prop: Node) -> MeshInstance3D:
 		return prop
 	var meshes := prop.find_children("*", "MeshInstance3D", true, false)
 	return meshes[0] if meshes.size() > 0 else null
+
+## Round start (SPEC.md 5.1): the owner repositions itself for its role —
+## seekers wait blind in the sealed spawn box, hiders start at the map spawn.
+## Only the authority moves itself; everyone else sees it via the synchronizer.
+func _on_round_roles_assigned() -> void:
+	if not is_multiplayer_authority():
+		return
+	var role: int = _game_state.role_of(get_multiplayer_authority())
+	if role == _game_state.Role.SEEKER:
+		_teleport_to_group_marker("seeker_spawn")
+	elif role == _game_state.Role.HIDER:
+		_teleport_to_group_marker("player_spawn")
+
+## Hunt start (SPEC.md 5.2): seekers are released into the map.
+func _on_round_phase_changed(phase: int) -> void:
+	if not is_multiplayer_authority():
+		return
+	if phase == _game_state.Phase.HUNT and _game_state.is_seeker(get_multiplayer_authority()):
+		_teleport_to_group_marker("player_spawn")
+
+## Teleport to the first marker in `group` under this capsule's world (the
+## GameState's parent — /root in the real game, the branch root in tests),
+## fanned by registry slot so simultaneous teleports never stack players.
+func _teleport_to_group_marker(group: String) -> void:
+	var world: Node = _game_state.get_parent()
+	if world == null:
+		return
+	var target: Node3D = null
+	for marker in world.find_children("*", "Marker3D", true, false):
+		if marker.is_in_group(group):
+			target = marker
+			break
+	if target == null:
+		return
+	var ids: Array = _game_state.players.keys()
+	ids.sort()
+	var slot := maxi(ids.find(get_multiplayer_authority()), 0)
+	var angle := float(slot) * TAU / 8.0
+	global_position = target.global_position + Vector3(cos(angle), 0.0, sin(angle)) * 1.2
+	velocity = Vector3.ZERO
 
 ## WASD + arrow keys, registered at runtime: project.godot is a central file
 ## no feature branch may touch, so its stock input map stays empty. Physical
