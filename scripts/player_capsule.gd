@@ -59,6 +59,7 @@ const PlayerForms := preload("res://scripts/player_forms.gd")
 const PropPainter := preload("res://scripts/paint/prop_painter.gd")
 const Eyedropper := preload("res://scripts/paint/eyedropper.gd")
 const RoundLocator := preload("res://scripts/round/round_locator.gd")
+const Progression := preload("res://scripts/round/progression.gd")
 const PaintHudScene := preload("res://scenes/paint_hud.tscn")
 
 const WALK_SPEED: float = 5.0  # slime base speed; forms scale it — max_speed()
@@ -351,10 +352,34 @@ func max_speed() -> float:
 ## neutral white no matter what the slime looks like — SPEC.md 9.1's anti-P2W
 ## rule: the prop scenes own their white material, nothing is inherited.
 ## Authority-only: remote copies change form exclusively via the synchronizer.
+## While a round runs, the SPEC.md 8 eat table gates the size (hiders) and
+## seekers may not transform at all; the lobby stays a free sandbox.
 func transform_to_prop(prop_id: String) -> void:
 	if not is_multiplayer_authority():
 		return
+	if not _may_transform_to(prop_id):
+		return
 	form_id = prop_id
+
+## The eat-table gate (SPEC.md 8). Runs only on the owning peer — remote
+## copies follow the synchronizer, whose values the owner already validated.
+func _may_transform_to(prop_id: String) -> bool:
+	if _game_state == null or not _game_state.is_round_active():
+		return true  # lobby sandbox / bare test capsules
+	var me := get_multiplayer_authority()
+	var role: int = _game_state.role_of(me)
+	if role == _game_state.Role.SEEKER:
+		_flash_notice("Sucher verwandeln sich nicht.")
+		return false
+	if role != _game_state.Role.HIDER:
+		return false  # mid-round spectators have no body to disguise
+	if not Progression.is_size_unlocked(_game_state.eaten_of(me), PlayerForms.size_of(prop_id)):
+		_flash_notice("Noch nicht freigeschaltet — friss NPC-Slimes!")
+		return false
+	return true
+
+func _flash_notice(text: String) -> void:
+	get_tree().call_group("round_hud", "flash_notice", text)
 
 ## Back to slime, allowed at any time (SPEC.md 9.1) — this wipes the paint job
 ## (_apply_form unbinds the painter) and ends paint mode.

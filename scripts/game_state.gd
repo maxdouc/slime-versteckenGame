@@ -29,6 +29,8 @@ signal npc_eaten(peer_id: int, count: int)
 enum Phase { LOBBY, PREP, HUNT, END }
 enum Role { NONE, HIDER, SEEKER }
 
+const Progression := preload("res://scripts/round/progression.gd")
+
 # Defaults — SPEC.md 4. Host-configurable at lobby time.
 var prep_seconds: float = 60.0
 var hunt_seconds: float = 240.0
@@ -103,9 +105,13 @@ func hider_ids() -> Array:
 
 ## Host-only: a validated feeding just completed (SPEC.md 7). The updated
 ## registry travels to everyone; clients learn about the increase through the
-## diff in _sync_registry and re-emit npc_eaten locally.
+## diff in _sync_registry and re-emit npc_eaten locally. The count caps at
+## the SPEC.md 8 progression cap — a 4th NPC is still consumed but buys
+## nothing (recorded decision; the spec caps the progression, not the meal).
 func record_eaten(id: int) -> void:
 	if not _is_authority() or not players.has(id):
+		return
+	if players[id]["eaten"] >= Progression.EAT_CAP:
 		return
 	var reg := players.duplicate(true)
 	reg[id]["eaten"] += 1

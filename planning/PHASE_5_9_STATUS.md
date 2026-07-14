@@ -14,8 +14,8 @@ evidence. Manual/external validation is never claimed.
 |---|--------|--------|--------|-----|-------|
 | 0 | planning/phase-5-9-execution | main | ✅ | bd82bbe | n/a (docs) |
 | 1 | feature/round-phases | 0 | ✅ | dbbe7d4 | 42/42 new + full regression |
-| 2 | feature/npc-slimes-feeding | 1 | ✅ | (head of branch) | 25/25 new + full regression |
-| 3 | feature/eat-progression-table | 2 | ⏳ | — | — |
+| 2 | feature/npc-slimes-feeding | 1 | ✅ | df5973e | 25/25 new + full regression |
+| 3 | feature/eat-progression-table | 2 | ✅ | (head of branch) | 39/39 new + full regression |
 | 4 | feature/rotation-timer | 3 | ⏳ | — | — |
 | 5 | feature/win-lose-reset | 4 | ⏳ | — | — |
 | 6 | feature/paintball-gun | 5 | ⏳ | — | — |
@@ -102,6 +102,20 @@ evidence. Manual/external validation is never claimed.
 - Host validates phase (PREP only), role (hider), liveness, NPC existence,
   and real distance (2.5 m); spoofed eater ids rejected via sender check.
 - Manual (Travis): slurp/prompt feel, poof visibility, two-machine feeding.
+
+### 3 · feature/eat-progression-table — ✅
+
+- Changed: `scripts/round/progression.gd` (new — pure SPEC.md 8 table incl.
+  clone budget for Phase 9), `scripts/game_state.gd` (record_eaten caps at
+  3; 4th NPC still consumable, buys nothing — recorded decision),
+  `scripts/player_capsule.gd` (transform gate: hiders limited by unlocks
+  mid-round, seekers never transform mid-round, LOBBY sandbox),
+  `scripts/round/round_hud.gd` + `scenes/round_hud.tscn` (unlock overview
+  line + self-clearing denial notice), `tests/progression_test.gd` (new).
+- Tests (2026-07-14, all exit 0): new test PASS 39/39 (red first: missing
+  progression.gd, then ungated transform). Full regression (9 suites),
+  boot, `git diff --check` — clean.
+- Manual (Travis): unlock-loop feel on two machines, HUD wording.
 
 ## Risks / open items (running list)
 
