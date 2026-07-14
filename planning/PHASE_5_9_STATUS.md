@@ -18,8 +18,8 @@ evidence. Manual/external validation is never claimed.
 | 3 | feature/eat-progression-table | 2 | ✅ | ad51c77 | 39/39 new + full regression |
 | 4 | feature/rotation-timer | 3 | ✅ | b4425f8 | 24/24 new + full regression |
 | 5 | feature/win-lose-reset | 4 | ✅ | 2837358 | 26/26 new + FULL suite (12 files, 437 checks) |
-| 6 | feature/paintball-gun | 5 | ✅ | (head of branch) | 19/19 new + FULL suite (13 files, 456 checks) |
-| 7 | feature/seeker-splatter | 6 | ⏳ | — | — |
+| 6 | feature/paintball-gun | 5 | ✅ | 1ba2783 | 19/19 new + FULL suite (13 files, 456 checks) |
+| 7 | feature/seeker-splatter | 6 | ✅ | (head of branch) | 15/15 new + FULL suite (14 files, 471 checks) |
 | 8 | feature/seeker-cooldown | 7 | ⏳ | — | — |
 | 9 | feature/spectator-mode | 8 | ⏳ | — | — |
 | 10 | feature/map1-house-graybox | 9 | ⏳ | — | — |
@@ -197,6 +197,25 @@ evidence. Manual/external validation is never claimed.
   `git diff --check` clean.
 - Manual (Travis): aim feel, projectile speed/arc, two-machine hit
   registration, crosshair readability.
+
+### 7 · feature/seeker-splatter — ✅
+
+- Changed: `scripts/seeker/splatter_manager.gd` + `scripts/seeker/splatter.gd`
+  + `scenes/splatter.tscn` (new — event-synced {pos, normal, seed}, seeded
+  identical blob clusters on every peer, bounded history with late-join
+  replay, round-reset clear), `scripts/seeker/paintball.gd` (map miss →
+  splatter; mid-air fizzle leaves nothing), `scripts/player_capsule.gd`
+  (apply_splatter_spray — near-miss spray routed through the OWNER's own
+  PaintSync stroke events, exactly-once, late-join safe),
+  `scenes/main.tscn` (Splatters + SplatterManager),
+  `tests/splatter_test.gd` (new).
+- Events-only rule upheld: splatter = 1 RPC with 3 small values; prop spray
+  = normal int64 paint events; no texture ever crosses the wire.
+- Tests (2026-07-14): new test PASS 15/15 (red first: missing manager; one
+  test fix — the cap is a built-in bound and must shrink on every peer).
+  FULL suite: 14 files, 471 checks, boot, diff — all green.
+- Manual (Travis): splatter look/size on surfaces, spray readability on
+  props, two-machine.
 
 ## Risks / open items (running list)
 

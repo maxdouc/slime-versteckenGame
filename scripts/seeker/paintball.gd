@@ -27,11 +27,13 @@ var _velocity := Vector3.ZERO
 var _age := 0.0
 var _resolved := false
 var _combat: Node = null
+var _splatter_manager: Node = null
 var _game_state: Node = null
 var _exclude: Array = []  # the shooter's body RID — you cannot shoot yourself
 
 func _ready() -> void:
 	_combat = RoundLocator.locate_named(self, ^"SeekerCombat")
+	_splatter_manager = RoundLocator.locate_named(self, ^"SplatterManager")
 	_game_state = RoundLocator.locate(self)
 	_velocity = launch_dir.normalized() * SPEED
 	if not is_multiplayer_authority():
@@ -76,6 +78,10 @@ func _resolve_impact(collider: Object, at: Vector3, normal: Vector3) -> void:
 
 func _resolve_miss(at: Vector3, normal: Vector3) -> void:
 	_resolved = true
+	# A map impact leaves permanent paint (SPEC.md 11); a mid-air fizzle
+	# (NAN position) leaves nothing.
+	if _splatter_manager != null and at.x == at.x:
+		_splatter_manager.add_world_splatter(at, normal)
 	if _combat != null:
 		_combat.report_miss(shot_id, shooter_id, at, normal)
 	queue_free()

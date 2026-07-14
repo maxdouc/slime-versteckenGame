@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="PackedScene" path="res://scenes/lobby_ui.tscn" id="2_lobby_ui"]
@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://scenes/round_hud.tscn" id="4_round_hud"]
 [ext_resource type="Script" path="res://scripts/round/npc_manager.gd" id="5_npc_manager"]
 [ext_resource type="Script" path="res://scripts/seeker/seeker_combat.gd" id="6_seeker_combat"]
+[ext_resource type="Script" path="res://scripts/seeker/splatter_manager.gd" id="7_splatter_manager"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -35,6 +36,11 @@ spawn_path = NodePath("../Projectiles")
 
 [node name="SeekerCombat" type="Node" parent="."]
 script = ExtResource("6_seeker_combat")
+
+[node name="Splatters" type="Node3D" parent="."]
+
+[node name="SplatterManager" type="Node" parent="."]
+script = ExtResource("7_splatter_manager")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 

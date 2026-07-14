@@ -536,6 +536,29 @@ func _reset_feeding() -> void:
 	_slurp_npc = null
 	get_tree().call_group("round_hud", "set_eat_prompt", "", 0.0)
 
+const SPLATTER_SPRAY_STAMPS := 5
+const SPLATTER_SPRAY_COLOR := Color(0.95, 0.2, 0.75)  # the paintball magenta
+
+## A near-miss splatter caught this prop (SPEC.md 11 — "Angesprühte
+## Verstecker müssen übermalen oder fliegen auf"). Only the OWNER converts
+## the spray into its own normal paint-stroke events: exactly-once across
+## the session, and late joiners replay it with the regular paint history.
+func apply_splatter_spray(global_hit: Vector3, seed_value: int) -> void:
+	if not is_multiplayer_authority() or form_id == PlayerForms.SLIME:
+		return
+	if _game_state != null and not _game_state.is_alive(get_multiplayer_authority()):
+		return
+	var center_uv: Vector2 = painter.world_point_to_uv(global_hit)
+	if center_uv.x < 0.0:
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	_paint_sync.local_stroke(center_uv, SPLATTER_SPRAY_COLOR)
+	for _i in SPLATTER_SPRAY_STAMPS - 1:
+		var jitter := Vector2(rng.randf_range(-0.08, 0.08), rng.randf_range(-0.08, 0.08))
+		var uv := (center_uv + jitter).clamp(Vector2.ZERO, Vector2.ONE)
+		_paint_sync.local_stroke(uv, SPLATTER_SPRAY_COLOR)
+
 ## The paintball gun (SPEC.md 11): seekers only, HUNT only, alive only.
 func _is_armed_seeker() -> bool:
 	if _game_state == null or _seeker_combat == null:
