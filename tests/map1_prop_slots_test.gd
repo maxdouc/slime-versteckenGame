@@ -117,24 +117,33 @@ func _run_tests() -> void:
 				printerr("  slot %s crowds npc marker %s" % [slot.name, marker.name])
 	_check(clearance_ok, "decoys keep >= 0.8 m clearance from NPC markers")
 
-	# Solid, collidable, and NEVER the players' neutral white.
+	# Solid, collidable, and NEVER the players' neutral white. Meshes may nest
+	# inside instanced model scenes (the Kenney dressing), so search deep and
+	# require at least one non-white material per decoy — an all-white decoy
+	# would read as an untransformed player.
 	print("[map1_prop_slots_test] decoy construction")
 	var solid_ok := true
 	var color_ok := true
 	for slot in slots:
-		var mesh: MeshInstance3D = null
+		var meshes: Array = slot.find_children("*", "MeshInstance3D", true, false)
 		var shape: CollisionShape3D = null
 		for child in slot.get_children():
-			if child is MeshInstance3D:
-				mesh = child
-			elif child is CollisionShape3D:
+			if child is CollisionShape3D:
 				shape = child
-		if mesh == null or shape == null or shape.shape == null:
+		if meshes.is_empty() or shape == null or shape.shape == null:
 			solid_ok = false
 			continue
-		var mat := mesh.get_active_material(0)
-		if not (mat is StandardMaterial3D) \
-				or (mat as StandardMaterial3D).albedo_color.is_equal_approx(WHITE):
+		var any_colored := false
+		for mesh_node in meshes:
+			var mesh: Mesh = (mesh_node as MeshInstance3D).mesh
+			if mesh == null:
+				continue
+			for surface in mesh.get_surface_count():
+				var mat := (mesh_node as MeshInstance3D).get_active_material(surface)
+				if mat is BaseMaterial3D \
+						and not (mat as BaseMaterial3D).albedo_color.is_equal_approx(WHITE):
+					any_colored = true
+		if not any_colored:
 			color_ok = false
 	_check(solid_ok, "every decoy is a solid body (mesh + collision)")
 	_check(color_ok, "no decoy wears the players' neutral white")

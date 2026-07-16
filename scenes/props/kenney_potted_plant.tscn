@@ -1,0 +1,19 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/props/static_prop.gd" id="1_static_prop"]
+[ext_resource type="PackedScene" path="res://assets/kenney/furniture_kit/pottedPlant.glb" id="2_model"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_plant"]
+radius = 0.17
+height = 0.643
+
+[node name="KenneyPottedPlant" type="StaticBody3D"]
+script = ExtResource("1_static_prop")
+size_class = "medium"
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+transform = Transform3D(1.2, 0, 0, 0, 1.2, 0, 0, 0, 1.2, -0.1015, 0, 0.11516)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.322, 0)
+shape = SubResource("CylinderShape3D_plant")

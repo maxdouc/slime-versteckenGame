@@ -24,8 +24,8 @@ evidence. Manual/external validation is never claimed.
 | 9 | feature/spectator-mode | 8 | ✅ | 271f549 | 17/17 new + FULL suite (16 files, 501 checks) |
 | 10 | feature/map1-house-graybox | 9 | ✅ | abcaa17 | 15/15 new + FULL suite (17 files, 516 checks) |
 | 11 | feature/map1-npc-spawn-markers | 10 | ✅ | e0e1ae1 | 7/7 new + FULL suite (18 files, 523 checks) |
-| 12 | feature/map1-prop-slots | 11 | ✅ | (head of branch) | 10/10 new + FULL suite (19 files, 533 checks) |
-| 13 | feature/map1-kenney-dressing | 12 | ⏳ | — | — |
+| 12 | feature/map1-prop-slots | 11 | ✅ | b0b8549 | 10/10 new + FULL suite (19 files, 533 checks) |
+| 13 | feature/map1-kenney-dressing | 12 | ✅ | (head of branch) | 9/9 new + FULL suite (20 files, 542 checks) + import clean |
 | 14 | feature/web-export-smoke-test | 13 | ⏳ | — | — |
 | 15 | feature/itch-playtest-build | 14 | ⏳ | — | — |
 | 16 | planning/playtest-protocol | 15 | ⏳ | — | — |
@@ -300,6 +300,33 @@ evidence. Manual/external validation is never claimed.
 - Tests (2026-07-15): new test PASS 10/10 (red first), cooldown 12/12
   consecutive after the fix. FULL suite: 19 files, 533 checks green.
 - Manual (Travis): decoy plausibility/readability judgment.
+
+### 13 · feature/map1-kenney-dressing — ✅  (PHASE 7 COMPLETE — implementation)
+
+- External assets (per LOCAL_OPERATOR policy): copied ONLY the 8 Furniture
+  Kit GLBs actually placed on Map 1 (cardboardBoxClosed, bookcaseClosed,
+  kitchenFridge, trashcan, pottedPlant, books, lampSquareTable, radio) +
+  the kit's License.txt into `assets/kenney/furniture_kit/`. No ZIPs, no
+  unused files. RECORDED DECISION: the Building Kit was inspected and NOT
+  used — it is a textured urban kit whose look clashes with the flat-color
+  Furniture Kit; SPEC.md 14's one-ecosystem style rule wins (authorization
+  to use a pack is not an obligation). Zero Building Kit files committed.
+- Changed: 8 dressed decoy scenes `scenes/props/kenney_*.tscn` (Kenney
+  models probed for AABB — the kit is ~¼ scale, so each scene carries its
+  own scale + centering offset + fitted collision), the 3 primitive decoy
+  scenes DELETED (replaced — that is this branch's purpose),
+  `maps/map1_house.tscn` regenerated with room-appropriate furniture
+  (fridge in the Küche, bookcases in living/office/bed/dining rooms,
+  cardboard boxes elsewhere; trashcans/plants medium; books/lamps/radios
+  small), `tests/map1_prop_slots_test.gd` construction check now searches
+  nested GLB meshes, `tests/map1_dressing_test.gd` (new). The `--import`
+  run generated the .gd.uid sidecars for every script of this chain —
+  committed per repo convention (Phase 1-4 scripts have theirs).
+- Tests (2026-07-15): dressing test PASS 9/9 (red first: no assets).
+  PHASE 7 EXIT SUITE: 20 files, 542 checks + headless import (0 errors)
+  + boot — all green.
+- Manual (Travis): the LOOK (dressing judgment is the point of this
+  branch); Kenney-vs-Synty stays open until the playtest gate.
 
 ## Risks / open items (running list)
 
