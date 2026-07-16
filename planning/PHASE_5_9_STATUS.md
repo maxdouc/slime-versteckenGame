@@ -29,8 +29,8 @@ evidence. Manual/external validation is never claimed.
 | 14 | feature/web-export-smoke-test | 13 | ✅ | cf76dba | CLI export exit 0 + Chrome smoke incl. browser-WebRTC hosting |
 | 15 | feature/itch-playtest-build | 14 | ✅* | 1692a0d | pipeline proven to the API gate; upload blocked: itch email unverified (Travis) |
 | 16 | planning/playtest-protocol | 15 | ✅ | 698101d | n/a (docs) |
-| 17 | feature/clones | 16 | ✅ | (head of branch) | 19/19 new + FULL suite (21 files, 561 checks) |
-| 18 | feature/clone-death-link | 17 | ⏳ | — | — |
+| 17 | feature/clones | 16 | ✅ | b6c5678 | 19/19 new + FULL suite (21 files, 561 checks) |
+| 18 | feature/clone-death-link | 17 | ✅ | (head of branch) | 15/15 new + FULL suite (22 files, 576 checks) |
 | 19 | feature/clone-swap-teleport | 18 | ⏳ | — | — |
 
 ## Preflight evidence (2026-07-14, operator Travis)
@@ -414,6 +414,20 @@ evidence. Manual/external validation is never claimed.
   reset clear. FULL suite: 21 files, 561 checks, boot, diff — green.
 - Manual (Travis): clone indistinguishability from a player prop,
   placement feel, two-machine.
+
+### 18 · feature/clone-death-link — ✅
+
+- Changed: `scripts/seeker/paintball.gd` (clone impact branch — destroy
+  the clone via the manager's single despawn path; an ALIVE owner dies
+  through the Phase 5 entry with reason "clone" and the shot counts as a
+  HIT (no cooldown — it downed a player); a dead owner's leftover clone is
+  debris: despawn + MISS with splatter), `tests/clone_death_link_test.gd`
+  (new). The Todes-Link stays exactly as spec'd — SPEC.md 10 calls it a
+  deliberate, twice-confirmed decision; no softening.
+- Tests (2026-07-15): new test PASS 15/15 (red first: 5 link behaviors
+  missing). FULL suite: 22 files, 576 checks, boot, diff — green.
+- Manual (Travis): fairness FEEL of the death link (playtest-watch item
+  per the protocol's clone gate).
 
 ## Risks / open items (running list)
 
