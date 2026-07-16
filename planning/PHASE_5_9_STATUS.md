@@ -27,8 +27,8 @@ evidence. Manual/external validation is never claimed.
 | 12 | feature/map1-prop-slots | 11 | ✅ | b0b8549 | 10/10 new + FULL suite (19 files, 533 checks) |
 | 13 | feature/map1-kenney-dressing | 12 | ✅ | 7e62b90 | 9/9 new + FULL suite (20 files, 542 checks) + import clean |
 | 14 | feature/web-export-smoke-test | 13 | ✅ | cf76dba | CLI export exit 0 + Chrome smoke incl. browser-WebRTC hosting |
-| 15 | feature/itch-playtest-build | 14 | ✅* | (head of branch) | pipeline proven to the API gate; upload blocked: itch email unverified (Travis) |
-| 16 | planning/playtest-protocol | 15 | ⏳ | — | — |
+| 15 | feature/itch-playtest-build | 14 | ✅* | 1692a0d | pipeline proven to the API gate; upload blocked: itch email unverified (Travis) |
+| 16 | planning/playtest-protocol | 15 | ✅ | (head of branch) | n/a (docs) |
 | 17 | feature/clones | 16 | ⏳ | — | — |
 | 18 | feature/clone-death-link | 17 | ⏳ | — | — |
 | 19 | feature/clone-swap-teleport | 18 | ⏳ | — | — |
@@ -381,6 +381,19 @@ evidence. Manual/external validation is never claimed.
 - Morning action (Travis): verify the itch account email, then rerun the
   four commands in tools/push_playtest.md — everything up to the API gate
   is proven working. Then set the page's browser-embed options.
+
+### 16 · planning/playtest-protocol — ✅  (PHASE 8 COMPLETE — implementation)
+
+- `planning/PLAYTEST_PROTOCOL.md` (new, German for the community): 3-wave
+  Discord rollout (4-6 → ~20 → ~100), per-session metrics (join success,
+  disconnects, FPS feel + one real measurement, elimination causes split
+  rotation/paintball/clone, eats, Grundieren usage), a 10-question survey,
+  and the three decision gates: Kenney-vs-Synty (SPEC.md 14), cooldown
+  tuning (SPEC.md 11), clone cut (SPEC.md 10). Closes the SPEC.md 16 open
+  point. Also lists the real preconditions: itch email verification,
+  public signaling host + WSS before wave B, browser↔browser join check.
+- Docs only — suite unaffected.
+- Manual (Travis+Maxim): adopt/adjust, schedule wave A.
 
 ## Risks / open items (running list)
 
