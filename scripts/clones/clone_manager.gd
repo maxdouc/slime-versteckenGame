@@ -88,6 +88,57 @@ func request_place(placer_id: int, form_id: String, at: Vector3,
 	_next_clone_id += 1
 	_spawner.spawn([clone_id, placer_id, form_id, at, visual_yaw, events])
 
+## Owner-side entry point for the Tausch-Teleport (SPEC.md 10).
+func request_swap_from(peer_id: int) -> void:
+	if RoundLocator.has_real_peer(self) and not multiplayer.is_server():
+		request_swap.rpc_id(1, peer_id)
+	else:
+		request_swap(peer_id)
+
+## Runs on the HOST: consume the MOST RECENTLY placed living clone (V1
+## target selection — recorded decision) and send the owner its landing
+## spot. Only the owner's machine moves the capsule (movement authority
+## model); the clone despawn replicates through the spawner.
+@rpc("any_peer", "reliable")
+func request_swap(peer_id: int) -> void:
+	if _game_state == null or not _game_state.is_round_authority():
+		return
+	var sender := multiplayer.get_remote_sender_id()
+	if sender != 0 and sender != peer_id:
+		return  # spoofed claim
+	if not _game_state.is_round_active():
+		return
+	if _game_state.role_of(peer_id) != _game_state.Role.HIDER \
+			or not _game_state.is_alive(peer_id):
+		return
+	var mine := clones_of(peer_id)
+	if mine.is_empty():
+		return  # nothing to swap to — a calm no-op
+	var target: Node3D = mine[0]
+	for clone in mine:
+		if clone.clone_id > target.clone_id:
+			target = clone
+	var landing: Vector3 = target.position
+	destroy_clone(target.clone_id)  # consumed — SPEC.md 10
+	var my_id := multiplayer.get_unique_id() if RoundLocator.has_real_peer(self) else 1
+	if peer_id == my_id:
+		_do_swap(landing)
+	elif RoundLocator.has_real_peer(self):
+		_do_swap.rpc_id(peer_id, landing)
+
+## Runs on the OWNER's machine: land at the clone's spot. The jump counts
+## as a room change and restarts the rotation timer (SPEC.md 10 — by
+## definition, so no 5-second dwell).
+@rpc("authority", "reliable")
+func _do_swap(landing: Vector3) -> void:
+	var players_node := get_node_or_null(players_path)
+	if players_node == null:
+		return
+	var my_id := multiplayer.get_unique_id() if RoundLocator.has_real_peer(self) else 1
+	var capsule := players_node.get_node_or_null(str(my_id))
+	if capsule != null:
+		capsule.swap_teleport_to(landing)
+
 ## Host-side removal — the death link (9.2) and swap-teleport (9.3) build on
 ## this single despawn path.
 func destroy_clone(clone_id: int) -> void:

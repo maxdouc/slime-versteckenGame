@@ -30,8 +30,8 @@ evidence. Manual/external validation is never claimed.
 | 15 | feature/itch-playtest-build | 14 | ✅* | 1692a0d | pipeline proven to the API gate; upload blocked: itch email unverified (Travis) |
 | 16 | planning/playtest-protocol | 15 | ✅ | 698101d | n/a (docs) |
 | 17 | feature/clones | 16 | ✅ | b6c5678 | 19/19 new + FULL suite (21 files, 561 checks) |
-| 18 | feature/clone-death-link | 17 | ✅ | (head of branch) | 15/15 new + FULL suite (22 files, 576 checks) |
-| 19 | feature/clone-swap-teleport | 18 | ⏳ | — | — |
+| 18 | feature/clone-death-link | 17 | ✅ | 9fb2fbe | 15/15 new + FULL suite (22 files, 576 checks) |
+| 19 | feature/clone-swap-teleport | 18 | ✅ | (head of branch) | 13/13 new + CHAIN EXIT SUITE (23 files, 589 checks + import + boot) |
 
 ## Preflight evidence (2026-07-14, operator Travis)
 
@@ -428,6 +428,24 @@ evidence. Manual/external validation is never claimed.
   missing). FULL suite: 22 files, 576 checks, boot, diff — green.
 - Manual (Travis): fairness FEEL of the death link (playtest-watch item
   per the protocol's clone gate).
+
+### 19 · feature/clone-swap-teleport — ✅  (PHASE 9 + CHAIN COMPLETE — implementation)
+
+- Changed: `scripts/clones/clone_manager.gd` (request_swap host path:
+  sender identity, active round, alive hider; consumes the MOST RECENTLY
+  placed clone — recorded V1 target selection — through the single
+  despawn path, then sends the owner its landing spot; only the owner's
+  machine moves the capsule), `scripts/player_capsule.gd` (request_swap +
+  swap_teleport_to: land, zero velocity, and RotationTracker.reset_timer()
+  IMMEDIATELY — SPEC.md 10 defines the jump as a room change, no 5 s
+  dwell; KEY_T), `tests/clone_swap_test.gd` (new).
+- Tests (2026-07-15): new test PASS 13/13 ×3 consecutive (red first:
+  request_swap missing; one test fix — the no-op check now compares
+  horizontal drift, a settling capsule sinks). CHAIN EXIT SUITE on this
+  final branch: 23 test files / 589 checks, headless import 0 errors,
+  boot exit 0, `git diff --check` clean — ALL GREEN.
+- Manual (Travis): escape-anchor feel, two-machine, and the protocol's
+  clone-cut gate (clones stay the first cut candidate — SPEC.md 10).
 
 ## Risks / open items (running list)
 

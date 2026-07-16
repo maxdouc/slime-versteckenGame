@@ -214,6 +214,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_enter_paint_mode()
 	elif event.is_action_pressed("place_clone"):
 		place_clone()
+	elif event.is_action_pressed("swap_teleport"):
+		request_swap()
 	elif event.is_action_pressed("form_slime"):
 		transform_to_slime()
 	elif event.is_action_pressed("form_small"):
@@ -585,6 +587,25 @@ func place_clone() -> void:
 	_clone_manager.request_place_from(get_multiplayer_authority(), form_id,
 			position, _visual.rotation.y, _paint_sync.history_snapshot())
 
+## Tausch-Teleport (SPEC.md 10): ask the host to consume the most recent
+## clone; the landing arrives via CloneManager._do_swap on this machine.
+func request_swap() -> void:
+	if not is_multiplayer_authority() or _clone_manager == null:
+		return
+	_clone_manager.request_swap_from(get_multiplayer_authority())
+
+## Land at the consumed clone's spot. The jump counts as a room change and
+## restarts the rotation timer IMMEDIATELY — SPEC.md 10 defines it so;
+## the 5-second dwell does not apply. Form and paint stay untouched.
+func swap_teleport_to(landing: Vector3) -> void:
+	if not is_multiplayer_authority():
+		return
+	position = landing
+	velocity = Vector3.ZERO
+	var tracker := get_node_or_null(^"RotationTracker")
+	if tracker != null:
+		tracker.reset_timer()
+
 ## The paintball gun (SPEC.md 11): seekers only, HUNT only, alive only.
 func _is_armed_seeker() -> bool:
 	if _game_state == null or _seeker_combat == null:
@@ -728,6 +749,8 @@ static func _ensure_input_actions() -> void:
 		"fressen": [KEY_E],
 		# Place a clone of the current form + paint (SPEC.md 10, Phase 9).
 		"place_clone": [KEY_C],
+		# Tausch-Teleport to the most recent clone (SPEC.md 10, Phase 9).
+		"swap_teleport": [KEY_T],
 		# 3D eyedropper in paint mode. Q, not E — E is the future Fressen key.
 		"eyedropper": [KEY_Q],
 		# One-click base coat in paint mode (SPEC.md 9.3 Grundieren).
