@@ -109,6 +109,7 @@ var _paint_hud: CanvasLayer  # local player only (like the camera rig)
 var _game_state: Node = null
 var _npc_manager: Node = null
 var _seeker_combat: Node = null
+var _clone_manager: Node = null
 
 const EAT_HOLD_SECONDS := 1.0  # E-hold to slurp an NPC (SPEC.md 7)
 const EAT_REACH := 2.5  # prompt range; the host validates the same reach
@@ -187,6 +188,7 @@ func _ready() -> void:
 		_game_state.round_reset.connect(_on_round_reset)
 	_npc_manager = RoundLocator.locate_named(self, ^"NpcManager")
 	_seeker_combat = RoundLocator.locate_named(self, ^"SeekerCombat")
+	_clone_manager = RoundLocator.locate_named(self, ^"CloneManager")
 	_apply_form()
 	_set_rotation_drip(rotation_drip)  # spawn state may precede @onready
 	_refresh_ghost()  # late joiners may spawn into an already-running round
@@ -210,6 +212,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_fire_paintball()
 	elif event.is_action_pressed("paint_mode"):
 		_enter_paint_mode()
+	elif event.is_action_pressed("place_clone"):
+		place_clone()
 	elif event.is_action_pressed("form_slime"):
 		transform_to_slime()
 	elif event.is_action_pressed("form_small"):
@@ -569,6 +573,18 @@ func apply_splatter_spray(global_hit: Vector3, seed_value: int) -> void:
 		var uv := (center_uv + jitter).clamp(Vector2.ZERO, Vector2.ONE)
 		_paint_sync.local_stroke(uv, SPLATTER_SPRAY_COLOR)
 
+## Place a clone at the current spot (SPEC.md 10): a static copy of the
+## current form including its paint. The owner snapshots its own compacted
+## paint events; the HOST validates role, budget (eat table) and position.
+func place_clone() -> void:
+	if not is_multiplayer_authority() or _clone_manager == null:
+		return
+	if form_id == PlayerForms.SLIME:
+		_flash_notice("Erst verwandeln — ein Klon kopiert deine Form.")
+		return
+	_clone_manager.request_place_from(get_multiplayer_authority(), form_id,
+			position, _visual.rotation.y, _paint_sync.history_snapshot())
+
 ## The paintball gun (SPEC.md 11): seekers only, HUNT only, alive only.
 func _is_armed_seeker() -> bool:
 	if _game_state == null or _seeker_combat == null:
@@ -710,6 +726,8 @@ static func _ensure_input_actions() -> void:
 		"paint_mode": [KEY_P],
 		# Hold E next to a sleeping NPC to eat it (SPEC.md 7, Phase 5).
 		"fressen": [KEY_E],
+		# Place a clone of the current form + paint (SPEC.md 10, Phase 9).
+		"place_clone": [KEY_C],
 		# 3D eyedropper in paint mode. Q, not E — E is the future Fressen key.
 		"eyedropper": [KEY_Q],
 		# One-click base coat in paint mode (SPEC.md 9.3 Grundieren).

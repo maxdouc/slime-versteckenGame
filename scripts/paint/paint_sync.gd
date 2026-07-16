@@ -85,6 +85,14 @@ func _broadcast(event: int) -> void:
 	_record(event)
 	_apply_paint_event.rpc(_capsule.paint_epoch, event)
 
+## Owner-side snapshot of the CURRENT paint lifetime's compacted events —
+## exactly what a late joiner would replay. Clones (Phase 9) carry this at
+## placement so their paint stays a pure event stream (SPEC.md 9.3).
+func history_snapshot() -> PackedInt64Array:
+	if not is_multiplayer_authority() or _history_epoch != _capsule.paint_epoch:
+		return PackedInt64Array()
+	return _history.duplicate()
+
 ## Called by the capsule whenever paint_epoch advances: the previous
 ## lifetime's events can never be replayed again — release them eagerly.
 func reset_history() -> void:

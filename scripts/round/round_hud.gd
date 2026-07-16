@@ -18,6 +18,7 @@ const NOTICE_SECONDS := 2.5
 @onready var _role_label: Label = $Panel/VBox/RoleLabel
 @onready var _eaten_label: Label = $Panel/VBox/EatenLabel
 @onready var _forms_label: Label = $Panel/VBox/FormsLabel
+@onready var _clones_label: Label = $Panel/VBox/ClonesLabel
 @onready var _rotation_label: Label = $Panel/VBox/RotationLabel
 @onready var _start_button: Button = $Panel/VBox/StartButton
 @onready var _prompt_label: Label = $Prompt/PromptLabel
@@ -37,6 +38,7 @@ var _chat_lines: Array = []
 @onready var _outcome_label: Label = $EndPanel/VBox/OutcomeLabel
 
 var _game_state: Node = null
+var _clone_manager: Node = null
 var _notice_left := 0.0
 var _cooldown_left := 0.0
 
@@ -44,6 +46,7 @@ func _ready() -> void:
 	add_to_group("round_hud")  # capsules push interaction prompts here
 	_game_state = RoundLocator.locate(self)
 	_dead_chat = RoundLocator.locate_named(self, ^"DeadChat")
+	_clone_manager = RoundLocator.locate_named(self, ^"CloneManager")
 	_start_button.pressed.connect(_on_start_pressed)
 	_chat_input.text_submitted.connect(_on_chat_submitted)
 	set_eat_prompt("", 0.0)
@@ -104,6 +107,7 @@ func _process(_delta: float) -> void:
 	_role_label.text = _role_text()
 	_eaten_label.text = _eaten_text()
 	_forms_label.text = _forms_text()
+	_clones_label.text = _clones_text()
 	_start_button.visible = _game_state.can_start_round()
 	_update_ghost_banner()
 	_update_end_panel()
@@ -172,6 +176,19 @@ func _update_end_panel() -> void:
 		_outcome_label.text = "Du wurdest erwischt."
 	else:
 		_outcome_label.text = ""
+
+## "Klone: n/m [C]" for hiders with a budget (SPEC.md 10 via the eat table).
+func _clones_text() -> String:
+	if _clone_manager == null:
+		return ""
+	var me := _me()
+	if not _game_state.is_round_active() \
+			or _game_state.role_of(me) != _game_state.Role.HIDER:
+		return ""
+	var budget: int = Progression.clones_allowed(_game_state.eaten_of(me))
+	if budget == 0:
+		return ""
+	return "Klone: %d/%d [C]" % [_clone_manager.clones_of(me).size(), budget]
 
 ## Unlock overview from the SPEC.md 8 table, e.g. "Groß ✓ · Mittel ✗(1) · Klein ✗(2)".
 func _forms_text() -> String:

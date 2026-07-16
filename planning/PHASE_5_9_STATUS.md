@@ -28,8 +28,8 @@ evidence. Manual/external validation is never claimed.
 | 13 | feature/map1-kenney-dressing | 12 | ✅ | 7e62b90 | 9/9 new + FULL suite (20 files, 542 checks) + import clean |
 | 14 | feature/web-export-smoke-test | 13 | ✅ | cf76dba | CLI export exit 0 + Chrome smoke incl. browser-WebRTC hosting |
 | 15 | feature/itch-playtest-build | 14 | ✅* | 1692a0d | pipeline proven to the API gate; upload blocked: itch email unverified (Travis) |
-| 16 | planning/playtest-protocol | 15 | ✅ | (head of branch) | n/a (docs) |
-| 17 | feature/clones | 16 | ⏳ | — | — |
+| 16 | planning/playtest-protocol | 15 | ✅ | 698101d | n/a (docs) |
+| 17 | feature/clones | 16 | ✅ | (head of branch) | 19/19 new + FULL suite (21 files, 561 checks) |
 | 18 | feature/clone-death-link | 17 | ⏳ | — | — |
 | 19 | feature/clone-swap-teleport | 18 | ⏳ | — | — |
 
@@ -394,6 +394,26 @@ evidence. Manual/external validation is never claimed.
   public signaling host + WSS before wave B, browser↔browser join check.
 - Docs only — suite unaffected.
 - Manual (Travis+Maxim): adopt/adjust, schedule wave A.
+
+### 17 · feature/clones — ✅
+
+- Changed: `scripts/clones/clone.gd` + `scenes/clone.tscn` (new — static
+  copy: prop scene by form id, registry collision, paint replayed from the
+  owner's compacted event snapshot), `scripts/clones/clone_manager.gd`
+  (new — host-validated placement: sender identity, round active, alive
+  hider, real prop form, budget from the eat table, claimed position vs
+  the host's copy; destroy_clone for 9.2/9.3; round-reset clear; paint
+  snapshot rides IN the spawn data so the spawner's late-join replay
+  carries the identical image for free), `scripts/paint/paint_sync.gd`
+  (history_snapshot), `scripts/player_capsule.gd` (place_clone + KEY_C),
+  round HUD ("Klone: n/m [C]"), `scenes/main.tscn` (Clones/CloneSpawner/
+  CloneManager), `tests/clones_test.gd` (new).
+- Tests (2026-07-15): new test PASS 19/19 (red first: manager missing) —
+  pixel-accurate paint on both peers AND on a late joiner, static after
+  owner repaints, budget 2-at-2-eaten with the third rejected, no decay,
+  reset clear. FULL suite: 21 files, 561 checks, boot, diff — green.
+- Manual (Travis): clone indistinguishability from a player prop,
+  placement feel, two-machine.
 
 ## Risks / open items (running list)
 

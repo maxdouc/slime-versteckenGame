@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scripts/seeker/seeker_combat.gd" id="6_seeker_combat"]
 [ext_resource type="Script" path="res://scripts/seeker/splatter_manager.gd" id="7_splatter_manager"]
 [ext_resource type="Script" path="res://scripts/round/dead_chat.gd" id="8_dead_chat"]
+[ext_resource type="Script" path="res://scripts/clones/clone_manager.gd" id="9_clone_manager"]
 
 [node name="Main" type="Node3D"]
 script = ExtResource("1_main")
@@ -45,6 +46,14 @@ script = ExtResource("7_splatter_manager")
 
 [node name="DeadChat" type="Node" parent="."]
 script = ExtResource("8_dead_chat")
+
+[node name="Clones" type="Node3D" parent="."]
+
+[node name="CloneSpawner" type="MultiplayerSpawner" parent="."]
+spawn_path = NodePath("../Clones")
+
+[node name="CloneManager" type="Node" parent="."]
+script = ExtResource("9_clone_manager")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
