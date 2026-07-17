@@ -23,6 +23,22 @@ const CLONE_SCENE_PATH := "res://scenes/clone.tscn"
 const MAX_CLONE_EVENTS := 1024  # spawn-data bound (8 KiB of paint events)
 const PLACE_RADIUS := 2.5  # claimed position vs the host's copy of the placer
 
+## Manual-validation fix (fix/phase-5-9-manual-validation, defect 1): a clone
+## spawned exactly AT the placer overlapped the placer's body, and
+## move_and_slide depenetration then shoved the player unpredictably — through
+## the 0.2 m floor slabs in the worst case. The clone therefore appears this
+## far in FRONT of the placer's facing (largest form: 0.78 m half-diagonal +
+## 0.4 m capsule radius = 1.18 m minimum separation).
+const PLACE_OFFSET := 1.3
+## A placed clone's base floats this far above the detected floor — keeps the
+## overlap probe from touching the surface it stands on.
+const FLOOR_EPSILON := 0.02
+## Floor probe around the claimed base: from chest height down through the
+## slab. Surfaces steeper than ~45° never count as a floor.
+const FLOOR_PROBE_UP := 1.5
+const FLOOR_PROBE_DOWN := 4.0
+const FLOOR_MIN_NORMAL_Y := 0.7
+
 @export var clones_path: NodePath = ^"../Clones"
 @export var spawner_path: NodePath = ^"../CloneSpawner"
 @export var players_path: NodePath = ^"../Players"
@@ -81,12 +97,61 @@ func request_place(placer_id: int, form_id: String, at: Vector3,
 	var placer: Node3D = players_node.get_node_or_null(str(placer_id))
 	if placer == null or placer.position.distance_to(at) > PLACE_RADIUS:
 		return  # the clone must appear where the body actually is
+	# Deterministic floor-safe placement: snap the base onto the first
+	# walkable surface below the claimed spot, then reject anything that
+	# would overlap an existing body (clone, wall, player). Every peer then
+	# spawns from the SAME already-safe coordinates.
+	var snapped: Variant = _floor_snapped(at)
+	if snapped == null or _spot_blocked(form_id, snapped):
+		_tell_placer_blocked(placer_id)
+		return
 	var events := paint_events
 	if events.size() > MAX_CLONE_EVENTS:
 		events = events.slice(events.size() - MAX_CLONE_EVENTS)
 	var clone_id := _next_clone_id
 	_next_clone_id += 1
-	_spawner.spawn([clone_id, placer_id, form_id, at, visual_yaw, events])
+	_spawner.spawn([clone_id, placer_id, form_id, snapped, visual_yaw, events])
+
+## Base position with y snapped FLOOR_EPSILON above the walkable surface
+## below `at` (parent-relative in, parent-relative out) — or null when there
+## is no floor there (void, a body in the way, or a too-steep surface).
+func _floor_snapped(at: Vector3) -> Variant:
+	var from_g: Vector3 = _clones.to_global(at + Vector3.UP * FLOOR_PROBE_UP)
+	var to_g: Vector3 = _clones.to_global(at - Vector3.UP * FLOOR_PROBE_DOWN)
+	var space := _clones.get_world_3d().direct_space_state
+	var hit := space.intersect_ray(PhysicsRayQueryParameters3D.create(from_g, to_g))
+	if hit.is_empty():
+		return null
+	if hit.collider is CharacterBody3D:
+		return null  # a player is not a floor
+	if hit.collider is Node and (hit.collider as Node).is_in_group("clone"):
+		return null  # no clone towers — a clone's top is not a floor either
+	if hit.normal.y < FLOOR_MIN_NORMAL_Y:
+		return null
+	var local_hit: Vector3 = _clones.to_local(hit.position)
+	return Vector3(at.x, local_hit.y + FLOOR_EPSILON, at.z)
+
+## Overlap protection: the clone's collision volume at `base` must not
+## intersect anything — players, walls, furniture, other clones.
+func _spot_blocked(form_id: String, base: Vector3) -> bool:
+	var params := PhysicsShapeQueryParameters3D.new()
+	params.shape = PlayerForms.collision_shape(form_id)
+	params.transform = Transform3D(Basis.IDENTITY,
+			_clones.to_global(base + PlayerForms.collision_origin(form_id)))
+	var space := _clones.get_world_3d().direct_space_state
+	return not space.intersect_shape(params, 1).is_empty()
+
+func _tell_placer_blocked(placer_id: int) -> void:
+	var my_id := multiplayer.get_unique_id() if RoundLocator.has_real_peer(self) else 1
+	if placer_id == my_id:
+		_notify_place_blocked()
+	elif RoundLocator.has_real_peer(self):
+		_notify_place_blocked.rpc_id(placer_id)
+
+@rpc("authority", "reliable")
+func _notify_place_blocked() -> void:
+	get_tree().call_group("round_hud", "flash_notice",
+			"Kein Platz — der Klon braucht eine freie Stelle vor dir.")
 
 ## Owner-side entry point for the Tausch-Teleport (SPEC.md 10).
 func request_swap_from(peer_id: int) -> void:
@@ -119,18 +184,26 @@ func request_swap(peer_id: int) -> void:
 		if clone.clone_id > target.clone_id:
 			target = clone
 	var landing: Vector3 = target.position
-	destroy_clone(target.clone_id)  # consumed — SPEC.md 10
+	var consumed_id: int = target.clone_id
+	destroy_clone(consumed_id)  # consumed — SPEC.md 10
 	var my_id := multiplayer.get_unique_id() if RoundLocator.has_real_peer(self) else 1
 	if peer_id == my_id:
-		_do_swap(landing)
+		_do_swap(landing, consumed_id)
 	elif RoundLocator.has_real_peer(self):
-		_do_swap.rpc_id(peer_id, landing)
+		_do_swap.rpc_id(peer_id, landing, consumed_id)
 
 ## Runs on the OWNER's machine: land at the clone's spot. The jump counts
 ## as a room change and restarts the rotation timer (SPEC.md 10 — by
 ## definition, so no 5-second dwell).
+##
+## Defect-1 fix: the local copy of the consumed clone may still be solid for
+## a moment (the host's queue_free is end-of-frame, and the spawner despawn
+## has no ordering guarantee against this RPC) — landing inside it caused a
+## depenetration shove through the floor. Disarm its collision FIRST, then
+## land on the floor-safe base the clone stood on.
 @rpc("authority", "reliable")
-func _do_swap(landing: Vector3) -> void:
+func _do_swap(landing: Vector3, consumed_id: int) -> void:
+	_disarm_clone_collision(consumed_id)
 	var players_node := get_node_or_null(players_path)
 	if players_node == null:
 		return
@@ -139,13 +212,24 @@ func _do_swap(landing: Vector3) -> void:
 	if capsule != null:
 		capsule.swap_teleport_to(landing)
 
+func _disarm_clone_collision(clone_id: int) -> void:
+	for clone in _clones.get_children():
+		if clone.clone_id == clone_id:
+			clone.collision_layer = 0
+			var shape: CollisionShape3D = clone.get_node_or_null(^"CollisionShape3D")
+			if shape != null:
+				shape.set_deferred("disabled", true)
+			return
+
 ## Host-side removal — the death link (9.2) and swap-teleport (9.3) build on
-## this single despawn path.
+## this single despawn path. Collision disarms immediately: queue_free only
+## frees at end of frame, and nobody may collide with a consumed clone.
 func destroy_clone(clone_id: int) -> void:
 	if _game_state == null or not _game_state.is_round_authority():
 		return
 	for clone in _clones.get_children():
 		if clone.clone_id == clone_id:
+			_disarm_clone_collision(clone_id)
 			clone.queue_free()
 			return
 

@@ -212,9 +212,13 @@ func _run_tests() -> void:
 	await _wait(0.4)  # let the paint events reach the other peer
 
 	# --- Placement: the clone appears everywhere with form + paint ----------------
+	# Fixed contract (fix/phase-5-9-manual-validation): the clone appears
+	# PLACE_OFFSET in front of the facing, base floor-snapped — never inside
+	# the placer, never inside the floor.
 	print("[clones_test] placement with paint")
 	hider.global_position = hider_world.world.position + Vector3(-3.0, 1.0, -3.0)
 	hider.velocity = Vector3.ZERO
+	hider.get_node("Visual").rotation.y = 0.0  # facing -Z, deterministic
 	await process_frame
 	hider.place_clone()
 	var placed_pred := func() -> bool:
@@ -228,8 +232,8 @@ func _run_tests() -> void:
 	var client_clone: Node3D = client.clones.get_child(0)
 	_check(host_clone.form_id == "bucket" and client_clone.form_id == "bucket",
 			"clone carries the placed form on both peers")
-	_check(host_clone.position.distance_to(Vector3(-3.0, 1.0, -3.0)) < 0.6,
-			"clone stands where the hider stood")
+	_check(host_clone.position.distance_to(Vector3(-3.0, 0.12, -4.3)) < 0.3,
+			"clone stands floor-snapped in front of the hider")
 	var paint_pred := func() -> bool:
 		var a: Image = host_clone.paint_image()
 		var b: Image = client_clone.paint_image()
@@ -253,11 +257,19 @@ func _run_tests() -> void:
 			"a clone is STATIC: the owner's later repaint does not touch it")
 
 	# --- Budget: 2 eaten = 2 clones, the third is rejected -------------------------
+	# Each placement gets its own FREE spot: overlap protection would
+	# otherwise shadow the budget rule this section is about.
 	print("[clones_test] budget")
+	hider.global_position = hider_world.world.position + Vector3(0.0, 1.0, -3.0)
+	hider.velocity = Vector3.ZERO
+	await process_frame
 	hider.place_clone()
 	var second_pred := func() -> bool:
 		return _clone_count(host) == 2 and _clone_count(client) == 2
 	_check(await _until(second_pred, SYNC_BUDGET), "second clone allowed (budget 2)")
+	hider.global_position = hider_world.world.position + Vector3(3.0, 1.0, -3.0)
+	hider.velocity = Vector3.ZERO
+	await process_frame
 	hider.place_clone()
 	await _wait(0.5)
 	_check(_clone_count(host) == 2, "third clone rejected (SPEC.md 8 budget)")

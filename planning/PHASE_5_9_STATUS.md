@@ -31,7 +31,8 @@ evidence. Manual/external validation is never claimed.
 | 16 | planning/playtest-protocol | 15 | ✅ | 698101d | n/a (docs) |
 | 17 | feature/clones | 16 | ✅ | b6c5678 | 19/19 new + FULL suite (21 files, 561 checks) |
 | 18 | feature/clone-death-link | 17 | ✅ | 9fb2fbe | 15/15 new + FULL suite (22 files, 576 checks) |
-| 19 | feature/clone-swap-teleport | 18 | ✅ | (head of branch) | 13/13 new + CHAIN EXIT SUITE (23 files, 589 checks + import + boot) |
+| 19 | feature/clone-swap-teleport | 18 | ✅ | 471e36b | 13/13 new + CHAIN EXIT SUITE (23 files, 589 checks + import + boot) |
+| 20 | fix/phase-5-9-manual-validation | 19 | ✅ | (head of branch) | 2 new regression tests (37 + 11 checks) + FULL suite (25 files) + live Chrome↔Edge validation |
 
 ## Preflight evidence (2026-07-14, operator Travis)
 
@@ -447,12 +448,104 @@ evidence. Manual/external validation is never claimed.
 - Manual (Travis): escape-anchor feel, two-machine, and the protocol's
   clone-cut gate (clones stay the first cut candidate — SPEC.md 10).
 
+### 20 · fix/phase-5-9-manual-validation — ✅  (two blocking defects from Travis' manual validation, 2026-07-17)
+
+**Defect 1 — clones in the floor / swap fall-through.** Root cause chain
+(all three links evidence-backed by red tests):
+
+1. `request_place` spawned the clone exactly AT the placer — the clone's
+   static box fully overlapped the placer's body, and `move_and_slide`
+   depenetration then shoved the player unpredictably. Map-1 floors are
+   0.2 m slabs, so a downward shove tunneled the player through (same
+   shove class as the Phase-7 platform-ride bug).
+2. `request_swap` teleported the owner onto the clone while its collision
+   was still solid (host `queue_free` is end-of-frame; spawner-despawn vs
+   `_do_swap` RPC have no cross-ordering) — same shove on landing.
+3. Nothing floor-validated any y (a mid-air placer produced floating
+   clones — `is_on_floor()` is stale right after a teleport), so buried
+   positions propagated into later placements and swaps.
+
+Fix (SPEC.md 10 only fixes "static copy of the current form", not the
+placement spot — no spec conflict): the clone appears `PLACE_OFFSET`
+(1.3 m) in FRONT of the placer's facing; the HOST floor-snaps the base
+onto the first walkable surface below (ray probe, ε = 0.02 m; players and
+clone tops don't count as floor — no clone towers) and rejects any spot
+whose collision volume would overlap ANYTHING (players, walls, clones);
+blocked placements flash a notice to the placer. Swap: `_do_swap` carries
+the consumed clone id, the owner disarms that clone's local collision
+BEFORE landing, `destroy_clone` disarms immediately before `queue_free`,
+and the landing is the clone's floor-safe base by construction. LIFO
+consumption and the immediate rotation reset are unchanged
+(clone_swap_test still green).
+
+- Changed: `scripts/clones/clone_manager.gd`, `scripts/player_capsule.gd`
+  (place_clone offset), `tests/clone_floor_safety_test.gd` (NEW, 37
+  checks: all three prop sizes place floor-snapped + offset, placer never
+  shoved, swap never dips below the floor (per-frame sampling), blocked
+  spot rejected, 4× place/swap cycles clean), updates to the three
+  existing clone tests (their assertions encoded the buggy at-player
+  placement).
+- Red run first: 7/37 failed exactly on the diagnosed behaviors.
+
+**Defect 2 — Chrome→Edge WebRTC join never completes.** Root cause,
+proven by live reproduction: in the Web build Godot's whole frame loop —
+`_process` and with it every transport/signaling poll — rides on
+`requestAnimationFrame`, which browsers FREEZE for hidden or fully
+occluded tabs. A host whose window is behind the joiner's stops answering
+offers; alternating window focus lets the SDP/ICE messages trickle
+through the signaling log ("offer, answer, candidates both directions")
+while the handshake outlives its deadlines → permanent silent hang.
+mDNS-obfuscated candidates were ruled OUT: with both windows visible the
+Chrome↔Edge join completes in <1 s (link OPEN both sides).
+
+Fix, two layers:
+
+1. Root cause: web-only 250 ms JS interval pump (`Net._setup_web_pump`,
+   JavaScriptBridge) polls the WebRTC session + the MultiplayerAPI while
+   rAF is frozen (hidden-tab timers clamp to ~1 Hz — plenty; WebRTC-active
+   pages are exempt from deeper throttling). Live validation: with the
+   Chrome host FULLY occluded the whole time, the Edge join completed —
+   host console shows offer→answer→OPEN all timestamped inside the
+   occlusion window; joiner spawned in-game ("Peer connected: 1").
+2. Bounded visible failure + diagnostics: every negotiated pair logs
+   connection/gathering/signaling state transitions and each ICE
+   candidate (truncated) to the console, and gets a 20 s deadline
+   (`peer_connect_timeout_ms`). A joiner whose HOST link dies or times
+   out fails the session with a concrete on-screen reason (window
+   visibility hint + ICE-blocked hint) instead of hanging; a host only
+   drops the dead peer and keeps the room. Observed live in repro
+   attempt 1: the stalled join failed visibly at exactly +20 s.
+
+- Changed: `net/net.gd` (pump), `net/webrtc_signaling.gd` (diagnostics,
+  per-pair deadline, `_drop_connection`, failure/warning split),
+  `tests/webrtc_link_timeout_test.gd` (NEW, 11 checks: joiner host-link
+  timeout fails bounded/once/with-detail and prunes the mesh; a host's
+  dead peer is non-fatal; against real never-answered
+  WebRTCPeerConnections, no network).
+- `server/smoke_test.gd` (desktop two-peer end-to-end) still green with
+  the instrumented seam — covers the link-OPEN path.
+
+- Full gates on this branch (2026-07-17): FULL suite 25 test files (all
+  green, see final report), headless import, boot, fresh Web export exit
+  0, live Chrome↔Edge join both visible AND host-occluded, and
+  `git diff --check` clean.
+- Manual (Travis): re-run the original two-browser repro by hand; clone
+  placement feel with the new 1.3 m forward offset (SPEC-compatible,
+  team may still want a different offset); two-machine clone round.
+
 ## Risks / open items (running list)
 
 - Native WebRTC on macOS still untested (missing macOS webrtc_native
   framework) — pre-existing platform gap, unchanged by this chain.
-- itch page visibility can only be verified, never changed, by automation;
-  browser-embed settings on the page are manual (Travis).
+- itch upload UNBLOCKED 2026-07-17 after Travis verified the account
+  email: build `20260716-471e36b` pushed to the hidden
+  `web-playtest` channel (build #1801148 processed), embed options set
+  (1280×720, SharedArrayBuffer, fullscreen — with Travis' explicit
+  approval), page still 404 anonymously. The itch build predates the
+  fix branch — push a fresh build after this branch is reviewed.
+- Hidden-tab timers clamp to ~1 Hz: a HOST whose tab stays hidden for
+  minutes keeps answering joins (validated), but the ROUND logic still
+  runs at rAF pace — long-hidden hosts remain a playtest-watch item.
 
 ## Manual validation checklist for Travis (grows per branch)
 

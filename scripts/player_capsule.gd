@@ -584,8 +584,15 @@ func place_clone() -> void:
 	if form_id == PlayerForms.SLIME:
 		_flash_notice("Erst verwandeln — ein Klon kopiert deine Form.")
 		return
+	# Defect-1 fix: the clone appears PLACE_OFFSET in FRONT of the facing —
+	# never overlapping the placer's own body (the old same-spot placement
+	# caused depenetration shoves through the floor). The host floor-snaps
+	# and overlap-checks the spot before spawning.
+	var yaw: float = _visual.rotation.y
+	var spot: Vector3 = position \
+			+ Vector3(-sin(yaw), 0.0, -cos(yaw)) * _clone_manager.PLACE_OFFSET
 	_clone_manager.request_place_from(get_multiplayer_authority(), form_id,
-			position, _visual.rotation.y, _paint_sync.history_snapshot())
+			spot, yaw, _paint_sync.history_snapshot())
 
 ## Tausch-Teleport (SPEC.md 10): ask the host to consume the most recent
 ## clone; the landing arrives via CloneManager._do_swap on this machine.

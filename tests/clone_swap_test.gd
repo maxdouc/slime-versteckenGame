@@ -201,6 +201,7 @@ func _run_tests() -> void:
 	hider.get_node("PaintSync").local_fill(Color(0.8, 0.3, 0.1))
 	hider.global_position = hider_world.world.position + Vector3(-4.0, 1.0, -3.0)
 	hider.velocity = Vector3.ZERO
+	hider.get_node("Visual").rotation.y = 0.0  # facing -Z, deterministic
 	await process_frame
 	hider.place_clone()  # clone A (older)
 	var one_pred := func() -> bool:
@@ -214,6 +215,12 @@ func _run_tests() -> void:
 	var two_pred := func() -> bool:
 		return _clone_count(host) == 2 and _clone_count(client) == 2
 	_check(await _until(two_pred, SYNC_BUDGET), "clone B placed everywhere")
+	# The fixed placement contract offsets + floor-snaps the clone, so the
+	# landing is asserted against clone B's ACTUAL position, not the park.
+	var clone_b_pos := Vector3.ZERO
+	for clone in host.clones.get_children():
+		if clone.clone_id != clone_a_id:
+			clone_b_pos = clone.position
 
 	# Idle far away in the EAST room; the shrunk rotation timer starts there.
 	hider.global_position = hider_world.world.position + Vector3(3.0, 1.0, 0.0)
@@ -232,10 +239,10 @@ func _run_tests() -> void:
 	await _wait(0.8)  # rotation (1.2 s) more than half spent in EAST
 	hider.request_swap()
 	var swapped_pred := func() -> bool:
-		var own_there: bool = hider.position.distance_to(Vector3(-4.0, 1.0, 3.0)) < 0.8
+		var own_there: bool = hider.position.distance_to(clone_b_pos) < 0.8
 		var copy: Node3D = other_world.players.get_node_or_null(str(hider_id))
 		var copy_there: bool = copy != null \
-				and copy.position.distance_to(Vector3(-4.0, 1.0, 3.0)) < 0.8
+				and copy.position.distance_to(clone_b_pos) < 0.8
 		return own_there and copy_there and _clone_count(host) == 1 \
 				and _clone_count(client) == 1
 	_check(await _until(swapped_pred, SYNC_BUDGET),

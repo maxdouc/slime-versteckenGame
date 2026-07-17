@@ -219,12 +219,17 @@ func _run_tests() -> void:
 	await process_frame
 	owner.global_position = owner_world.world.position + Vector3(-3.0, 1.0, 3.0)
 	owner.velocity = Vector3.ZERO
+	owner.get_node("Visual").rotation.y = 0.0  # facing -Z, deterministic
 	await process_frame
 	owner.place_clone()
 	var one_pred := func() -> bool:
 		return _clone_count(host) == 1 and _clone_count(client_a) == 1 \
 				and _clone_count(client_b) == 1
 	_check(await _until(one_pred, SYNC_BUDGET), "clone 1 placed everywhere")
+	# The fixed placement contract offsets + floor-snaps clones, so the shots
+	# below aim at the ACTUAL clone positions, not the park spots.
+	var clone1_pos: Vector3 = host.clones.get_child(0).position
+	var clone1_id: int = host.clones.get_child(0).clone_id
 	owner.global_position = owner_world.world.position + Vector3(-3.0, 1.0, -3.0)
 	owner.velocity = Vector3.ZERO
 	await process_frame
@@ -233,6 +238,10 @@ func _run_tests() -> void:
 		return _clone_count(host) == 2 and _clone_count(client_a) == 2 \
 				and _clone_count(client_b) == 2
 	_check(await _until(two_pred, SYNC_BUDGET), "clone 2 placed everywhere")
+	var clone2_pos := Vector3.ZERO
+	for clone in host.clones.get_children():
+		if clone.clone_id != clone1_id:
+			clone2_pos = clone.position
 	# Park the owner well away from both clones and the firing line.
 	owner.global_position = owner_world.world.position + Vector3(-4.5, 1.0, 0.0)
 	owner.velocity = Vector3.ZERO
@@ -256,7 +265,7 @@ func _run_tests() -> void:
 
 	# --- Shot 1: the clone dies, so does its owner (Todes-Link) --------------------
 	print("[clone_death_link_test] death link")
-	var clone1_target := Vector3(-3.0, 1.0 + 0.275, 3.0)  # bucket center mass
+	var clone1_target := clone1_pos + Vector3(0.0, 0.275, 0.0)  # bucket center mass
 	var aim_from := Vector3(4.0, 1.2, 0.0)
 	seeker_world.combat.request_fire_from(seeker_id, aim_from,
 			(clone1_target - aim_from).normalized())
@@ -278,7 +287,7 @@ func _run_tests() -> void:
 
 	# --- Shot 2: a dead owner's clone is just debris --------------------------------
 	print("[clone_death_link_test] dead owner's clone")
-	var clone2_target := Vector3(-3.0, 1.0 + 0.275, -3.0)
+	var clone2_target := clone2_pos + Vector3(0.0, 0.275, 0.0)
 	seeker_world.combat.request_fire_from(seeker_id, aim_from,
 			(clone2_target - aim_from).normalized())
 	var debris_pred := func() -> bool:
