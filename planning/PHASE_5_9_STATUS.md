@@ -697,3 +697,61 @@ Still explicitly OUT of this completion (post-foundation work):
 - [x] BUILD_PLAN.md updated 2026-07-17: Phases 5–9 marked complete on
       this chain. The MERGE of the chain into main still happens via
       PRs reviewed with Maxim — nothing is merged by automation.
+
+## Merge completion (2026-07-18, docs/mark-phases-5-9-done)
+
+The Phase 5–9 chain has been merged into `main` through five pull
+requests, each reviewed by Travis and Maxim:
+
+- PR #21 — Phase 5: complete multiplayer round loop
+- PR #22 — Phase 6: add seeker combat and spectator mode
+- PR #23 — Phase 7: add the first dressed house map
+- PR #24 — Phase 8: add web export, itch deployment and playtest protocol
+- PR #25 — Phase 9: add clones and finalize V1 manual-validation fixes
+
+`main` (merge commit 557027a) now contains the full validated branch
+content through these five merge commits. This is a **documentation-only
+closeout** — no gameplay code was touched, and no new itch build was
+uploaded. planning/BUILD_PLAN.md has been updated: Phases 5–9 and every
+branch in their tables now read "Done" (not "Complete (chain)"), and the
+now-unused "Complete (chain)" legend entry was removed.
+
+### Final integration verification on merged main (operator Travis)
+
+- **Automated suite:** every `tests/*.gd` file run individually,
+  headless, from repo root (`<godot-console> --headless --path . --script
+  tests/<file>.gd`). All 26 files exit 0 / PASS; checks sum to exactly
+  **681/681**, matching the chain's previously recorded total. (Earlier
+  per-branch entries in this file refer to "28 test files" at various
+  points in the chain's history; the file count verified today against
+  merged main is 26 `tests/*.gd` files plus `server/smoke_test.gd` — 27
+  script files total — while the check total, the number that actually
+  matters, reconciles exactly at 681. No discrepancy in test coverage was
+  found; this is noted for the record rather than silently corrected.)
+- **WebRTC end-to-end smoke test:** `server/smoke_test.gd` — PASS, P2P
+  mesh established and data exchanged both ways.
+- **Headless project boot:** `--headless --quit --path .` — exit 0,
+  `[Slime-Verstecken] Boot OK — Godot 4.7-stable (official)`.
+- **Fresh release Web export:** `--headless --path . --export-release
+  "Web" export/web/index.html` — exit 0; artifacts present and correctly
+  sized (index.html, ~38.8 MB wasm, ~1.5 MB pck, JS glue, icons). The
+  export logs one warning — `GDExtension: Keine „wasm32"-Bibliothek für
+  GDExtension` — which is expected and pre-documented: per
+  `addons/webrtc_native/VERSION.md`, the Web export never uses the
+  webrtc_native GDExtension (browsers ship WebRTC natively; the
+  extension's `.gdextension` file lists no `web.*` entry). Not a merge
+  regression.
+- **`git diff --check`:** clean (exit 0, no output) on the merged tree.
+
+No merge regressions were found. No gameplay code was modified for this
+closeout.
+
+### Preserved post-foundation tasks (unchanged, still open)
+
+- Public WSS/TLS signaling hosting + the TURN-relay decision (blocks any
+  external tester wave).
+- Community playtest rollout (planning/PLAYTEST_PROTOCOL.md waves).
+- Cosmetic backlog: ✓/✗ glyphs of the forms HUD line render as boxes in
+  the web build (missing font glyph).
+- Native desktop WebRTC framework gap on macOS (webrtc_native has no
+  macOS build in this repo yet; the Mac browser client already works).

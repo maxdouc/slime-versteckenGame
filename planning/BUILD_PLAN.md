@@ -43,9 +43,6 @@ This file is ignored by git and must not be committed.
 ## Status legend
 
 - Done = merged into main
-- Complete (chain) = implemented, tested and manually validated on the
-  stacked Phase 5–9 branch chain (head: fix/phase-5-9-manual-validation);
-  merge into main via reviewed PRs is still pending
 - In progress = branch exists or task is currently being worked on
 - Next = next planned branch
 - Not started = planned but not started
@@ -87,9 +84,20 @@ This file is ignored by git and must not be committed.
 - Phase 4 (Paint system) is complete. Manual tests passed: local painting, camera orbit while painting, eyedropper and HSV color picker, Grundieren and Alles-Löschen, paint persistence while moving, paint reset when returning to slime, two local instances, paint event synchronization, independent player paint state, late join, and two real machines over ENet and Tailscale.
 
 - Phases 5–9 (Round loop, Seeker kit, Map 1, Web build, Clones) are
-  **Complete (chain)** — implemented as one stacked branch chain (owner:
-  Travis), ending in fix/phase-5-9-manual-validation. Evidence:
-  - automated suite: 28 test files / 681 checks, all green;
+  **Done** — implemented as one stacked branch chain (owner: Travis),
+  ending in fix/phase-5-9-manual-validation, then merged into main
+  through five pull requests reviewed by Travis and Maxim:
+  - PR #21 — Phase 5: complete multiplayer round loop
+  - PR #22 — Phase 6: add seeker combat and spectator mode
+  - PR #23 — Phase 7: add the first dressed house map
+  - PR #24 — Phase 8: add web export, itch deployment and playtest protocol
+  - PR #25 — Phase 9: add clones and finalize V1 manual-validation fixes
+  Evidence:
+  - automated suite: 681/681 checks green across the full tests/*.gd
+    suite plus the server/smoke_test.gd WebRTC end-to-end test,
+    re-verified on merged main (2026-07-18);
+  - headless project boot and fresh release Web export both re-verified
+    clean on merged main (2026-07-18);
   - Windows↔MacBook two-machine WebRTC validation over Tailscale
     (browser client on the Mac) — full Phase 5–9 gameplay pass;
   - hidden itch build `20260717-ac79b75` deployed and smoke-tested
@@ -97,9 +105,9 @@ This file is ignored by git and must not be committed.
   - final manual visual review by Travis + Maxim: rotation drip,
     splatter look, Map 1 walkthrough — accepted for V1.
   Details per branch: planning/PHASE_5_9_STATUS.md.
-- **V1 gameplay / foundation is COMPLETE.** Public internet multiplayer
-  deployment and the community playtest rollout are explicitly NOT part
-  of this and remain pending (see Next).
+- **V1 gameplay / foundation is COMPLETE and fully merged into main.**
+  Public internet multiplayer deployment and the community playtest
+  rollout are explicitly NOT part of this and remain pending (see Next).
 
 ### In progress
 
@@ -107,8 +115,6 @@ This file is ignored by git and must not be committed.
 
 ### Next
 
-- Merge the Phase 5–9 branch chain into main via reviewed PRs
-  (Travis + Maxim — no automated merges).
 - Post-foundation deployment task, BEFORE any external tester wave:
   public WSS/TLS signaling hosting + TURN-relay decision.
 - Community playtest rollout per planning/PLAYTEST_PROTOCOL.md
@@ -269,19 +275,20 @@ Rules:
 
 Goal: Turn the mechanics into an actual game round.
 
-Status: Complete (chain) — implemented, tested (28-file suite) and
-manually validated (two-machine Tailscale pass; rotation-drip feel
-accepted in the final review). See planning/PHASE_5_9_STATUS.md.
+Status: Done — merged into main via PR #21, reviewed by Travis and
+Maxim. Implemented, tested (681/681 automated checks) and manually
+validated (two-machine Tailscale pass; rotation-drip feel accepted in
+the final review). See planning/PHASE_5_9_STATUS.md.
 
 Branches:
 
 | Branch | Owner | Status | Scope |
 |---|---|---|---|
-| feature/round-phases | Travis | Complete (chain) | Lobby -> Prep -> Hunt -> End |
-| feature/npc-slimes-feeding | Travis | Complete (chain) | NPC slimes and feeding interaction |
-| feature/eat-progression-table | Travis | Complete (chain) | 0-3 eaten slimes unlock forms/clones |
-| feature/rotation-timer | Travis | Complete (chain) | 60s room rotation rule and drip penalty |
-| feature/win-lose-reset | Travis | Complete (chain) | Win, death, spectators, reset |
+| feature/round-phases | Travis | Done | Lobby -> Prep -> Hunt -> End |
+| feature/npc-slimes-feeding | Travis | Done | NPC slimes and feeding interaction |
+| feature/eat-progression-table | Travis | Done | 0-3 eaten slimes unlock forms/clones |
+| feature/rotation-timer | Travis | Done | 60s room rotation rule and drip penalty |
+| feature/win-lose-reset | Travis | Done | Win, death, spectators, reset |
 
 Rules:
 
@@ -296,17 +303,18 @@ Rules:
 
 Goal: Give seekers their core gameplay.
 
-Status: Complete (chain) — implemented, tested and manually validated
-(two-machine seeker duel; splatter look accepted in the final review).
+Status: Done — merged into main via PR #22, reviewed by Travis and
+Maxim. Implemented, tested and manually validated (two-machine seeker
+duel; splatter look accepted in the final review).
 
 Branches:
 
 | Branch | Owner | Status | Scope |
 |---|---|---|---|
-| feature/paintball-gun | Travis | Complete (chain) | Paintball projectile and hit elimination |
-| feature/seeker-splatter | Travis | Complete (chain) | Missed shots leave splatter on map |
-| feature/seeker-cooldown | Travis | Complete (chain) | 4s cooldown default |
-| feature/spectator-mode | Travis | Complete (chain) | Eliminated players spectate |
+| feature/paintball-gun | Travis | Done | Paintball projectile and hit elimination |
+| feature/seeker-splatter | Travis | Done | Missed shots leave splatter on map |
+| feature/seeker-cooldown | Travis | Done | 4s cooldown default |
+| feature/spectator-mode | Travis | Done | Eliminated players spectate |
 
 Rules:
 
@@ -320,18 +328,19 @@ Rules:
 
 Goal: Build the first playable map: Wohnhaus.
 
-Status: Complete (chain) — 9 rooms, 30 NPC markers, decoy slots, Kenney
-Furniture-Kit dressing; walkthrough (scale, doorways, layout, furniture,
-plausibility) accepted in the final review by Travis + Maxim.
+Status: Done — merged into main via PR #23, reviewed by Travis and
+Maxim. 9 rooms, 30 NPC markers, decoy slots, Kenney Furniture-Kit
+dressing; walkthrough (scale, doorways, layout, furniture, plausibility)
+accepted in the final review by Travis + Maxim.
 
 Branches:
 
 | Branch | Owner | Status | Scope |
 |---|---|---|---|
-| feature/map1-house-graybox | Travis | Complete (chain) | 9-room graybox house |
-| feature/map1-npc-spawn-markers | Travis | Complete (chain) | Around 30 NPC spawn markers |
-| feature/map1-prop-slots | Travis | Complete (chain) | Plausible large/medium/small prop positions |
-| feature/map1-kenney-dressing | Travis | Complete (chain) | Replace graybox with Kenney assets after core works |
+| feature/map1-house-graybox | Travis | Done | 9-room graybox house |
+| feature/map1-npc-spawn-markers | Travis | Done | Around 30 NPC spawn markers |
+| feature/map1-prop-slots | Travis | Done | Plausible large/medium/small prop positions |
+| feature/map1-kenney-dressing | Travis | Done | Replace graybox with Kenney assets after core works |
 
 Rules:
 
@@ -345,20 +354,21 @@ Rules:
 
 Goal: Let people test through a browser link.
 
-Status: Complete (chain) for the BUILD PIPELINE — web export works, the
-hidden itch channel serves build `20260717-ac79b75` (smoke-tested in the
-itch iframe), the playtest protocol is written, and a real browser
-client on a second machine passed the Tailscale validation. The PUBLIC
-rollout is explicitly still pending: public WSS/TLS signaling + TURN
-decision first, then the tester waves.
+Status: Done for the BUILD PIPELINE — merged into main via PR #24,
+reviewed by Travis and Maxim. Web export works, the hidden itch channel
+serves build `20260717-ac79b75` (smoke-tested in the itch iframe), the
+playtest protocol is written, and a real browser client on a second
+machine passed the Tailscale validation. The PUBLIC rollout is
+explicitly still pending: public WSS/TLS signaling + TURN decision
+first, then the tester waves.
 
 Branches:
 
 | Branch | Owner | Status | Scope |
 |---|---|---|---|
-| feature/web-export-smoke-test | Travis | Complete (chain) | Export simple web build |
-| feature/itch-playtest-build | Travis | Complete (chain) | Upload playtest build to itch.io (hidden channel) |
-| planning/playtest-protocol | Travis | Complete (chain) | Metrics, survey, Discord rollout |
+| feature/web-export-smoke-test | Travis | Done | Export simple web build |
+| feature/itch-playtest-build | Travis | Done | Upload playtest build to itch.io (hidden channel) |
+| planning/playtest-protocol | Travis | Done | Metrics, survey, Discord rollout |
 
 Rules:
 
@@ -373,16 +383,17 @@ Rules:
 
 Goal: Add advanced mechanics only after the core game works.
 
-Status: Complete (chain) — implemented, tested and validated on two real
-machines (paint fidelity through the swap, death link, swap escapes).
+Status: Done — merged into main via PR #25, reviewed by Travis and
+Maxim. Implemented, tested and validated on two real machines (paint
+fidelity through the swap, death link, swap escapes).
 
 Branches:
 
 | Branch | Owner | Status | Scope |
 |---|---|---|---|
-| feature/clones | Travis | Complete (chain) | Static clone copy of current prop and paint |
-| feature/clone-death-link | Travis | Complete (chain) | Destroyed clone kills owner |
-| feature/clone-swap-teleport | Travis | Complete (chain) | Teleport to clone and consume it |
+| feature/clones | Travis | Done | Static clone copy of current prop and paint |
+| feature/clone-death-link | Travis | Done | Destroyed clone kills owner |
+| feature/clone-swap-teleport | Travis | Done | Teleport to clone and consume it |
 
 Rules:
 
