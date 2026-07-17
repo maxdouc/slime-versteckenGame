@@ -206,7 +206,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	elif not _paint_mode and event is InputEventMouseButton and event.pressed:
 		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
-			# Any click the UI ignores recaptures the mouse (Phase 2 behavior).
+			# Any click the UI ignores recaptures the mouse (Phase 2 behavior)
+			# and leaves any focused text field (manual-validation fix, rd. 2).
+			get_viewport().gui_release_focus()
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		elif event.button_index == MOUSE_BUTTON_LEFT and _is_armed_seeker():
 			_fire_paintball()
@@ -376,8 +378,12 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 
-	# Camera-relative input: W always runs away from the camera.
-	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	# Camera-relative input: W always runs away from the camera. While a text
+	# field owns the keyboard (chat), WASD is typing, not walking (manual-
+	# validation fix, round 2 — same guard as the spectator camera).
+	var input := Vector2.ZERO
+	if not (get_viewport().gui_get_focus_owner() is LineEdit):
+		input = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var direction := Basis(Vector3.UP, _camera_pivot.rotation.y) * Vector3(input.x, 0.0, input.y)
 
 	var rate := ACCELERATION if direction != Vector3.ZERO else DECELERATION

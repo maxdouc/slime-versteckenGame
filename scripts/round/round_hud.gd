@@ -86,6 +86,9 @@ func add_dead_chat_line(from_id: int, text: String) -> void:
 
 func _on_chat_submitted(text: String) -> void:
 	_chat_input.clear()
+	# Enter hands the keyboard back to the spectator controls immediately —
+	# W/A/S/D must fly again, not keep typing (manual-validation fix, round 2).
+	_chat_input.release_focus()
 	if _dead_chat != null:
 		_dead_chat.send(text)
 
@@ -109,6 +112,11 @@ func _process(_delta: float) -> void:
 	_forms_label.text = _forms_text()
 	_clones_label.text = _clones_text()
 	_start_button.visible = _game_state.can_start_round()
+	if _start_button.visible:
+		# The count the START would deal roles to — if it reads 2 while 3
+		# people sit in the lobby, a peer's link is still opening and would
+		# silently spectate the round (manual-validation round 2 diagnosis).
+		_start_button.text = "Runde starten (%d Spieler)" % _game_state._connected_ids().size()
 	_update_ghost_banner()
 	_update_end_panel()
 	_update_crosshair()

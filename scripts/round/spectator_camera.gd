@@ -25,9 +25,18 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("ui_cancel"):
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	elif event is InputEventMouseButton and event.pressed:
+		# A click that lands OUTSIDE any control (a click ON the chat field
+		# never reaches _unhandled_input) leaves the chat and recaptures the
+		# mouse — manual-validation fix, round 2.
+		get_viewport().gui_release_focus()
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _process(delta: float) -> void:
+	# While the dead chat (or any text field) owns the keyboard, WASD is
+	# TYPING, not flying — Input action state knows nothing about GUI focus,
+	# so the suppression must happen here (manual-validation fix, round 2).
+	if get_viewport().gui_get_focus_owner() is LineEdit:
+		return
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var motion := (global_transform.basis * Vector3(input.x, 0.0, input.y))
 	if Input.is_action_pressed("fly_up"):

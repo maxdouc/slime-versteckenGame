@@ -32,7 +32,7 @@ evidence. Manual/external validation is never claimed.
 | 17 | feature/clones | 16 | ✅ | b6c5678 | 19/19 new + FULL suite (21 files, 561 checks) |
 | 18 | feature/clone-death-link | 17 | ✅ | 9fb2fbe | 15/15 new + FULL suite (22 files, 576 checks) |
 | 19 | feature/clone-swap-teleport | 18 | ✅ | 471e36b | 13/13 new + CHAIN EXIT SUITE (23 files, 589 checks + import + boot) |
-| 20 | fix/phase-5-9-manual-validation | 19 | ✅ | (head of branch) | 2 new regression tests (37 + 11 checks) + FULL suite (25 files) + live Chrome↔Edge validation |
+| 20 | fix/phase-5-9-manual-validation | 19 | ✅ | d3d1fd2 + head | round 1: 2 new tests (37+11) + Chrome↔Edge live · round 2: 2 more tests (11+33, 3-player ×8 runs) + 3-context smoke |
 
 ## Preflight evidence (2026-07-14, operator Travis)
 
@@ -532,6 +532,68 @@ Fix, two layers:
 - Manual (Travis): re-run the original two-browser repro by hand; clone
   placement feel with the new 1.3 m forward offset (SPEC-compatible,
   team may still want a different offset); two-machine clone round.
+
+### 21 · fix/phase-5-9-manual-validation — round 2 (2026-07-17, same branch)
+
+**Confirmed defect — dead-chat typing flew the spectator camera.** Root
+cause: the spectator camera (and the capsule) read movement from the
+`Input` singleton's ACTION STATE every frame — raw polling that knows
+nothing about GUI focus, so W/A/S/D typed into the chat LineEdit also
+counted as flight input (hotkeys were never affected: they run through
+`_unhandled_input`, which a focused LineEdit consumes). Fix: both polling
+sites skip movement while `gui_get_focus_owner()` is a LineEdit; Enter
+submits, clears AND releases focus (round_hud); a click outside any
+control releases focus in the same branch that recaptures the mouse
+(spectator + capsule — a click ON the field never reaches
+`_unhandled_input`, so only outside clicks release). Esc behavior
+untouched (first Esc leaves the field — LineEdit built-in — second frees
+the mouse). NEW `tests/dead_chat_focus_test.gd` (11 checks, red first on
+exactly the three fixed behaviors: suppression, Enter release, outside-
+click release) — drives real InputEventKey/Mouse through the headless
+viewport including the Enter submission into the real DeadChat pipeline.
+
+**Intermittent 3-player progression episode — diagnosed, game logic
+cleared, no blind patch.** NEW `tests/three_player_round_test.gd`
+(33 checks) pins the full contract over real ENet with 3 (then 4) full
+worlds: 3 lobby joiners -> exactly 1 seeker + 2 hiders with an identical
+registry everywhere; both hiders eat INDEPENDENTLY from the shared pool
+and unlock strictly by their OWN count (2 eaten = small+medium, 1 eaten =
+medium only, large always); the seeker can neither eat nor transform;
+END -> reset -> LOBBY empties the registry on every world and re-slimes
+(manual host start unchanged — intended); round 2 deals fresh roles with
+progression back at 0 (medium locked again); a MID-ROUND joiner is
+registered NONE+dead on all worlds, cannot transform, and gets a real
+role next round. **8 consecutive runs, 8 × 33 checks green** — under
+every shuffle outcome. The shuffle-based role assignment itself is
+untouched (manually verified as intended; randomness is not a defect).
+
+Most plausible cause of the observed episode, given the cleared game
+logic: the two-Edge-TABS setup — a background tab's frame loop freezes,
+and a peer whose mesh link has not finished opening when the host presses
+start is silently dealt into the round as a NONE spectator (cannot
+transform — the exact symptom; the HUD does show "Zuschauer — nächste
+Runde spielst du mit"). The 2-hider NPC pool is also only 4 slimes, so
+one hider eating 3+ starves the other ("could not progress") — by
+design, but opaque. Hardening (non-behavioral): the host's start button
+now reads "Runde starten (N Spieler)", so a still-connecting peer is
+visible BEFORE the roles are dealt.
+
+Live 3-context browser smoke (Chrome host + TWO separate visible Edge
+windows, CDP-driven): full 3-peer mesh (each Edge OPEN to host AND the
+other Edge), start button showed "(3 Spieler)", round started with host
+= Sucher (boxed) and both Edges = Verstecker with live progression HUDs.
+Cosmetic observation for the backlog: the ✓/✗ glyphs of the forms line
+render as boxes in the web build (missing font glyph).
+
+- Changed: `scripts/round/spectator_camera.gd`, `scripts/round/round_hud.gd`
+  (focus release + start-button count), `scripts/player_capsule.gd`
+  (movement guard + focus release on recapture), 2 new tests.
+- Gates (2026-07-17): full suite 28 files green (see final report),
+  headless import, boot, fresh Web export exit 0, `git diff --check`
+  clean, 3-browser-context smoke as above.
+- Manual (Travis): re-run the 3-player session with three VISIBLE
+  windows; watch the start button count before starting; dead-chat feel
+  (type, Enter, click out) as an eliminated player on a real round.
 
 ## Risks / open items (running list)
 
