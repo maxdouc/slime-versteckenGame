@@ -635,16 +635,45 @@ surfaces, the Map-1 walkthrough judgment, and public itch multiplayer
   WSS/TLS signaling (and a TURN decision) remain the deferred
   deployment items before any tester wave.
 
+### 24 · Final manual review — ✅ ACCEPTED FOR V1 (Travis + Maxim, 2026-07-17)
+
+The last three manual judgment items were reviewed together and accepted:
+
+- rotation drip / cohesion-loss visual and the grace-period feel (Phase 5)
+- paint-splatter appearance on surfaces (Phase 6)
+- Map 1 walkthrough: scale, doorways, room layout, furniture placement,
+  overall dressed-house plausibility (Phase 7)
+
+With this, **V1 gameplay / foundation for Phases 5–9 is COMPLETE** on this
+branch: automated suite 28 files / 681 checks green, Windows↔MacBook
+Tailscale two-machine validation (section 22), hidden itch build
+`20260717-ac79b75` deployed and smoke-tested (section 23), and the final
+visual walkthrough above. No gameplay was changed for this record.
+
+Still explicitly OUT of this completion (post-foundation work):
+
+- **Public internet multiplayer deployment**: public WSS/TLS signaling
+  hosting plus the TURN-relay decision — a separate deployment task that
+  must land BEFORE any external tester wave.
+- **Community playtest rollout** (waves per planning/PLAYTEST_PROTOCOL.md).
+- Cosmetic backlog: the ✓/✗ glyphs of the forms HUD line render as boxes
+  in the web build (missing font glyph).
+
 ## Risks / open items (running list)
 
-- Native WebRTC on macOS still untested (missing macOS webrtc_native
-  framework) — pre-existing platform gap, unchanged by this chain.
-- itch upload UNBLOCKED 2026-07-17 after Travis verified the account
-  email: build `20260716-471e36b` pushed to the hidden
-  `web-playtest` channel (build #1801148 processed), embed options set
-  (1280×720, SharedArrayBuffer, fullscreen — with Travis' explicit
-  approval), page still 404 anonymously. The itch build predates the
-  fix branch — push a fresh build after this branch is reviewed.
+- **POST-FOUNDATION DEPLOYMENT TASK (before any external tester wave):**
+  public WSS/TLS signaling hosting + the TURN-relay decision. The itch
+  build's signaling field still defaults to `127.0.0.1`; public browser
+  multiplayer is intentionally NOT part of the V1-foundation acceptance.
+- Community playtest rollout (waves, survey, Discord — see
+  planning/PLAYTEST_PROTOCOL.md) follows the deployment task.
+- Cosmetic backlog: ✓/✗ glyphs of the forms HUD line render as boxes in
+  the web build (missing font glyph) — visual only, accepted for now.
+- Native WebRTC on macOS (DESKTOP builds) still untested — missing macOS
+  webrtc_native framework; pre-existing platform gap. The Mac BROWSER
+  client works (section 22).
+- itch channel serves `20260717-ac79b75` (build #1803507), page hidden,
+  embed options set (1280×720, SharedArrayBuffer, fullscreen).
 - Hidden-tab timers clamp to ~1 Hz: a HOST whose tab stays hidden for
   minutes keeps answering joins (validated), but the ROUND logic still
   runs at rAF pace — long-hidden hosts remain a playtest-watch item.
@@ -652,18 +681,19 @@ surfaces, the Map-1 walkthrough judgment, and public itch multiplayer
 ## Manual validation checklist for Travis (grows per branch)
 
 - [x] Phase 5: full round on two real machines — PASSED 2026-07-17
-      (Windows↔Mac/Tailscale, section 22). Still open: rotation-drip
-      feel in a real chase.
+      (Windows↔Mac/Tailscale, section 22); rotation-drip / grace feel
+      ACCEPTED in the final review (section 24).
 - [x] Phase 6: seeker kit on two machines — PASSED 2026-07-17 (paintball,
-      cooldown, elimination, spectator + dead chat). Still open:
-      splatter look on surfaces.
-- [ ] Phase 7: house walkthrough (scale, doorways, prop plausibility,
-      dressed look).
+      cooldown, elimination, spectator + dead chat); splatter look
+      ACCEPTED in the final review (section 24).
+- [x] Phase 7: house walkthrough (scale, doorways, prop plausibility,
+      dressed look) — ACCEPTED in the final review (section 24).
 - [x] Phase 8: browser build on a second real machine — PASSED 2026-07-17
-      (MacBook browser client). Embed settings set 2026-07-17. Still
-      open: decide when/how testers get the hidden link; public WSS/TLS
-      signaling before any public itch multiplayer.
+      (MacBook browser client); embed settings set; hidden build
+      20260717-ac79b75 live. Still open (post-foundation): public
+      WSS/TLS signaling + TURN decision, then the tester-link rollout.
 - [x] Phase 9: clone rounds on two machines — PASSED 2026-07-17 (paint
       fidelity through swap, death link, swap escapes).
-- [ ] Only after the remaining items: mark phases Done in BUILD_PLAN.md
-      (via PR with Maxim).
+- [x] BUILD_PLAN.md updated 2026-07-17: Phases 5–9 marked complete on
+      this chain. The MERGE of the chain into main still happens via
+      PRs reviewed with Maxim — nothing is merged by automation.
