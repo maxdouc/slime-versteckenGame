@@ -595,6 +595,46 @@ render as boxes in the web build (missing font glyph).
   windows; watch the start button count before starting; dead-chat feel
   (type, Enter, click out) as an eliminated player on a real round.
 
+### 22 · Two-machine Tailscale validation — ✅ PASSED (Travis, 2026-07-17, at ac79b75)
+
+Windows PC (host + signaling server) ↔ MacBook (remote BROWSER client)
+over Tailscale, on this branch at `ac79b75`. Manually verified by Travis:
+
+- remote WebRTC join; both players visible, movement synchronized
+- random seeker/hider roles; phase transitions + timers matched
+- NPC feeding, progression and transformations synchronized
+- painting synchronized
+- paintball, cooldown, elimination and spectator mode
+- dead-chat focus behavior (the round-2 fix)
+- clones, clone death-link, swap teleport; form AND paint correct
+  after the teleport (the round-1 fix)
+- round end, full reset, and a complete second round
+
+This closes the README's "two real machines" requirement for Phases 5–9
+gameplay INCLUDING a real browser client on the second machine. Not yet
+covered manually: rotation-drip feel in a real chase, splatter look on
+surfaces, the Map-1 walkthrough judgment, and public itch multiplayer
+(blocked on public WSS/TLS signaling — deferred deployment item).
+
+### 23 · itch deployment of ac79b75 — ✅ (2026-07-17, deployment + browser smoke only)
+
+- Fresh release Web export from `ac79b75`: exit 0.
+- Page hidden pre-push (anonymous fetch 404, DRAFT badge).
+- `butler push` → channel `ttravis17/slime-verstecken-playtest:web-playtest`,
+  version **20260717-ac79b75**, build **#1803507** (√ processed; 99 %
+  patch reuse over #1801148). Page still 404 anonymously afterwards.
+- Logged-in iframe verification (Chrome): build boots (~15–20 s incl.
+  wasm compile), Map 1 + lobby UI render — the start button shows the
+  NEW "Runde starten (N Spieler)" count, proving the ac79b75 build is
+  live; fullscreen button present, enters full-canvas and Esc returns;
+  console has NO game/engine errors (only automation-extension noise
+  and itch's own expected `screen.orientation.lock()` refusal on
+  desktop); rendering steady and input responsive.
+- NOT covered (intentionally): public browser multiplayer from the itch
+  page — the signaling field still defaults to `127.0.0.1`; public
+  WSS/TLS signaling (and a TURN decision) remain the deferred
+  deployment items before any tester wave.
+
 ## Risks / open items (running list)
 
 - Native WebRTC on macOS still untested (missing macOS webrtc_native
@@ -611,14 +651,19 @@ render as boxes in the web build (missing font glyph).
 
 ## Manual validation checklist for Travis (grows per branch)
 
-- [ ] Phase 5: full round on two real machines (phases, feeding, unlocks,
-      rotation drip, win/reset).
-- [ ] Phase 6: seeker duel on two machines (hit reg, splatter look,
-      cooldown feel, spectating + dead chat).
+- [x] Phase 5: full round on two real machines — PASSED 2026-07-17
+      (Windows↔Mac/Tailscale, section 22). Still open: rotation-drip
+      feel in a real chase.
+- [x] Phase 6: seeker kit on two machines — PASSED 2026-07-17 (paintball,
+      cooldown, elimination, spectator + dead chat). Still open:
+      splatter look on surfaces.
 - [ ] Phase 7: house walkthrough (scale, doorways, prop plausibility,
       dressed look).
-- [ ] Phase 8: browser build on a second real browser/machine; itch page
-      embed settings; decide when/how testers get the hidden link.
-- [ ] Phase 9: clone rounds on two machines (paint fidelity, death link
-      fairness, swap escapes).
-- [ ] Only after the above: mark phases Done in BUILD_PLAN.md (via PR).
+- [x] Phase 8: browser build on a second real machine — PASSED 2026-07-17
+      (MacBook browser client). Embed settings set 2026-07-17. Still
+      open: decide when/how testers get the hidden link; public WSS/TLS
+      signaling before any public itch multiplayer.
+- [x] Phase 9: clone rounds on two machines — PASSED 2026-07-17 (paint
+      fidelity through swap, death link, swap escapes).
+- [ ] Only after the remaining items: mark phases Done in BUILD_PLAN.md
+      (via PR with Maxim).
