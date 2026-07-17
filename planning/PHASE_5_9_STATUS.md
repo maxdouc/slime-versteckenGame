@@ -21,11 +21,11 @@ evidence. Manual/external validation is never claimed.
 | 6 | feature/paintball-gun | 5 | ✅ | 1ba2783 | 19/19 new + FULL suite (13 files, 456 checks) |
 | 7 | feature/seeker-splatter | 6 | ✅ | 474d114 | 15/15 new + FULL suite (14 files, 471 checks) |
 | 8 | feature/seeker-cooldown | 7 | ✅ | 953f07e | 13/13 new + FULL suite (15 files, 484 checks) |
-| 9 | feature/spectator-mode | 8 | ✅ | (head of branch) | 17/17 new + FULL suite (16 files, 501 checks) |
-| 10 | feature/map1-house-graybox | 9 | ⏳ | — | — |
-| 11 | feature/map1-npc-spawn-markers | 10 | ⏳ | — | — |
-| 12 | feature/map1-prop-slots | 11 | ⏳ | — | — |
-| 13 | feature/map1-kenney-dressing | 12 | ⏳ | — | — |
+| 9 | feature/spectator-mode | 8 | ✅ | 271f549 | 17/17 new + FULL suite (16 files, 501 checks) |
+| 10 | feature/map1-house-graybox | 9 | ✅ | abcaa17 | 15/15 new + FULL suite (17 files, 516 checks) |
+| 11 | feature/map1-npc-spawn-markers | 10 | ✅ | e0e1ae1 | 7/7 new + FULL suite (18 files, 523 checks) |
+| 12 | feature/map1-prop-slots | 11 | ✅ | b0b8549 | 10/10 new + FULL suite (19 files, 533 checks) |
+| 13 | feature/map1-kenney-dressing | 12 | ✅ | (head of branch) | 9/9 new + FULL suite (20 files, 542 checks) + import clean |
 | 14 | feature/web-export-smoke-test | 13 | ⏳ | — | — |
 | 15 | feature/itch-playtest-build | 14 | ⏳ | — | — |
 | 16 | planning/playtest-protocol | 15 | ⏳ | — | — |
@@ -250,6 +250,83 @@ evidence. Manual/external validation is never claimed.
   directions, END-screen chat between two dead peers, reset cleanup.
   PHASE 6 EXIT SUITE: 16 files, 501 checks, boot, diff — all green.
 - Manual (Travis): fly feel, chat usability, END-screen flow, two-machine.
+
+### 10 · feature/map1-house-graybox — ✅
+
+- Changed: `maps/map1_house.tscn` (new — Wohnhaus graybox: 3×3 grid of
+  6×6 m rooms with the Flur as the central hub, 12 doorways ≥ 1.6 m so
+  EVERY room has ≥ 2 exits (SPEC.md 13 anti-death-trap rule), one flat
+  repaintable floor color per room, 9 RoomVolumes on the Phase 5
+  convention, doorway markers so exits are machine-checkable, sealed
+  seeker box north of the house, spawn markers by group; scene generated
+  via a one-shot script and committed as canonical data),
+  `scenes/main.tscn` (GrayRoom → Map1House), `scripts/main.gd` (spawn
+  marker found by GROUP, not path — maps decide spawns now),
+  `tests/map1_graybox_test.gd` (new). gray_room.tscn stays for tests.
+- Tests (2026-07-14): new test PASS 15/15 (red first: scene missing).
+  FULL suite incl. boot on the new map: 17 files, 516 checks — green.
+- Manual (Travis): walkthrough scale/camera-in-doorways judgment, room
+  color readability, two-machine roam.
+
+### 11 · feature/map1-npc-spawn-markers — ✅
+
+- Changed: `maps/map1_house.tscn` (30 npc_spawn markers: 3 per room + one
+  extra in Küche/Flur/Wohnzimmer, floor height, none in the seeker box —
+  regenerated via the same one-shot generator; the diff includes some
+  serializer reordering, structure verified by the graybox test),
+  `tests/map1_npc_markers_test.gd` (new).
+- Tests (2026-07-14): new test PASS 7/7 (red first: 0 markers) — placement
+  rules + an OFFLINE NpcManager integration spawn on the real map (distinct
+  marker positions, no reuse). FULL suite: 18 files, 523 checks green.
+- Manual (Travis): marker plausibility once furniture exists (corners,
+  under tables) — expected to shift during the dressing pass.
+
+### 12 · feature/map1-prop-slots — ✅
+
+- Changed: `scripts/props/static_prop.gd` + three colored decoy scenes
+  (`scenes/props/static_prop_{carton,bucket,cup}.tscn` — StaticBody3D,
+  NEVER pure white, dims mirror the player prop forms),
+  `maps/map1_house.tscn` (31 decoys: a LARGE spot in EVERY room per
+  SPEC.md 13, 10 medium + 12 small scatter, all with ≥ 0.8 m NPC-marker
+  clearance), `tests/map1_prop_slots_test.gd` (new).
+- ALSO: root-caused the cooldown/rotation flake for real this time —
+  frame-level tracing caught a capsule being DRAGGED 7.6 m in one frame:
+  CharacterBody3D treats a neighbor capsule it stands on as a MOVING
+  PLATFORM and inherits its teleport displacement. Production fix:
+  `platform_floor_layers = 0` / `platform_wall_layers = 0` on the capsule
+  (players never ride players; also fixes real-game drag on Phase 9's
+  swap-teleport). The cooldown test also gained all-three-world phase
+  gating and deterministic cooldown-expiry predicates.
+- Tests (2026-07-15): new test PASS 10/10 (red first), cooldown 12/12
+  consecutive after the fix. FULL suite: 19 files, 533 checks green.
+- Manual (Travis): decoy plausibility/readability judgment.
+
+### 13 · feature/map1-kenney-dressing — ✅  (PHASE 7 COMPLETE — implementation)
+
+- External assets (per LOCAL_OPERATOR policy): copied ONLY the 8 Furniture
+  Kit GLBs actually placed on Map 1 (cardboardBoxClosed, bookcaseClosed,
+  kitchenFridge, trashcan, pottedPlant, books, lampSquareTable, radio) +
+  the kit's License.txt into `assets/kenney/furniture_kit/`. No ZIPs, no
+  unused files. RECORDED DECISION: the Building Kit was inspected and NOT
+  used — it is a textured urban kit whose look clashes with the flat-color
+  Furniture Kit; SPEC.md 14's one-ecosystem style rule wins (authorization
+  to use a pack is not an obligation). Zero Building Kit files committed.
+- Changed: 8 dressed decoy scenes `scenes/props/kenney_*.tscn` (Kenney
+  models probed for AABB — the kit is ~¼ scale, so each scene carries its
+  own scale + centering offset + fitted collision), the 3 primitive decoy
+  scenes DELETED (replaced — that is this branch's purpose),
+  `maps/map1_house.tscn` regenerated with room-appropriate furniture
+  (fridge in the Küche, bookcases in living/office/bed/dining rooms,
+  cardboard boxes elsewhere; trashcans/plants medium; books/lamps/radios
+  small), `tests/map1_prop_slots_test.gd` construction check now searches
+  nested GLB meshes, `tests/map1_dressing_test.gd` (new). The `--import`
+  run generated the .gd.uid sidecars for every script of this chain —
+  committed per repo convention (Phase 1-4 scripts have theirs).
+- Tests (2026-07-15): dressing test PASS 9/9 (red first: no assets).
+  PHASE 7 EXIT SUITE: 20 files, 542 checks + headless import (0 errors)
+  + boot — all green.
+- Manual (Travis): the LOOK (dressing judgment is the point of this
+  branch); Kenney-vs-Synty stays open until the playtest gate.
 
 ## Risks / open items (running list)
 

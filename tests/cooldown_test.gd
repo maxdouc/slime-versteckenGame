@@ -169,11 +169,17 @@ func _run_tests() -> void:
 	host.gs.hunt_seconds = 30.0
 	host.gs.end_seconds = 0.5
 	host.gs.rotation_seconds = 30.0
-	host.gs.paintball_cooldown = 0.5  # host setting — the ONLY value that counts
+	host.gs.paintball_cooldown = 0.9  # host setting — the ONLY value that counts
+	# (0.9 s, not shorter: headless frames pace at ~10 fps, and the rejection
+	# probe below must land INSIDE the running cooldown even on slow frames.)
 
 	host.gs.start_round()
+	# Gate on ALL THREE worlds: parking must happen after every peer applied
+	# its role/phase teleports, or a late teleport re-stacks the actors.
 	var prep_pred := func() -> bool:
-		return host.gs.current_phase == host.gs.Phase.PREP
+		return host.gs.current_phase == host.gs.Phase.PREP \
+				and client_a.gs.current_phase == client_a.gs.Phase.PREP \
+				and client_b.gs.current_phase == client_b.gs.Phase.PREP
 	await _until(prep_pred, SYNC_BUDGET)
 	var seeker_id := -1
 	var hider_ids: Array = []
@@ -192,7 +198,9 @@ func _run_tests() -> void:
 
 	host.gs._advance_phase()  # PREP -> HUNT
 	var hunt_pred := func() -> bool:
-		return host.gs.current_phase == host.gs.Phase.HUNT
+		return host.gs.current_phase == host.gs.Phase.HUNT \
+				and client_a.gs.current_phase == client_a.gs.Phase.HUNT \
+				and client_b.gs.current_phase == client_b.gs.Phase.HUNT
 	await _until(hunt_pred, SYNC_BUDGET)
 
 	# Park everyone at known spots: seeker east, hiders west, off each axis.
@@ -221,18 +229,19 @@ func _run_tests() -> void:
 
 	seeker_world.combat.request_fire_from(seeker_id, Vector3(4.0, 1.2, 0.0),
 			Vector3(-0.3, -1.0, 0.0))
-	await _wait(0.25)
+	await _wait(0.2)
 	_check(host.projectiles.get_child_count() == 0, "re-fire during cooldown rejected")
 
-	await _wait(0.5)  # the 0.5 s host cooldown has expired by now
-	_check(host.combat.cooldown_left(seeker_id) == 0.0, "cooldown expired on schedule")
+	var ready_pred := func() -> bool: return host.combat.cooldown_left(seeker_id) == 0.0
+	var expired := await _until(ready_pred, 3.0)
+	_check(expired, "cooldown expired on schedule")
 	seeker_world.combat.request_fire_from(seeker_id, Vector3(4.0, 1.2, 0.0),
 			Vector3(-0.3, -1.0, 0.0))
 	var refired_pred := func() -> bool: return host.projectiles.get_child_count() == 1
 	_check(await _until(refired_pred, 2.0), "fire accepted after the cooldown")
 	var resolved_pred := func() -> bool: return host.projectiles.get_child_count() == 0
 	await _until(resolved_pred, 3.0)
-	await _wait(0.7)  # let that miss's cooldown expire too
+	await _until(ready_pred, 3.0)  # let that miss's cooldown expire too
 
 	# --- Hit -> NO cooldown (spec-literal: Fehlschuss = Cooldown) ---------------------
 	print("[cooldown_test] hit does not cool down")
