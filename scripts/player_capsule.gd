@@ -61,6 +61,7 @@ const Eyedropper := preload("res://scripts/paint/eyedropper.gd")
 const RoundLocator := preload("res://scripts/round/round_locator.gd")
 const Progression := preload("res://scripts/round/progression.gd")
 const PaintHudScene := preload("res://scenes/paint_hud.tscn")
+const SpectatorCameraScene := preload("res://scenes/spectator_camera.tscn")
 
 const WALK_SPEED: float = 5.0  # slime base speed; forms scale it — max_speed()
 const ACCELERATION: float = 25.0  # m/s² while there is movement input
@@ -107,6 +108,7 @@ var _paint_hud: CanvasLayer  # local player only (like the camera rig)
 ## no GameState exists above this capsule (focused tests spawn bare capsules).
 var _game_state: Node = null
 var _npc_manager: Node = null
+var _seeker_combat: Node = null
 
 const EAT_HOLD_SECONDS := 1.0  # E-hold to slurp an NPC (SPEC.md 7)
 const EAT_REACH := 2.5  # prompt range; the host validates the same reach
@@ -116,9 +118,11 @@ var _slurp_npc: Node3D = null
 
 ## Ghost state (feature/win-lose-reset): eliminated players and mid-round
 ## joiners are invisible, non-colliding and input-dead until the round resets
-## (SPEC.md 5.3 — the free spectator camera arrives in Phase 6). Derived from
-## the replicated registry on EVERY peer, so remote copies ghost themselves.
+## (SPEC.md 5.3). Derived from the replicated registry on EVERY peer, so
+## remote copies ghost themselves. On the OWNING machine, ghosting also
+## hands the view to the free spectator rig (feature/spectator-mode).
 var _ghosted := false
+var _spectator_rig: Node3D = null
 
 ## Current form: PlayerForms.SLIME or a PlayerForms.PROPS key. Replicated via
 ## the MultiplayerSynchronizer (on change + spawn state); remote copies and
@@ -147,9 +151,9 @@ func _enter_tree() -> void:
 	_ensure_input_actions()
 
 func _ready() -> void:
-	# Remote copies are driven by the synchronizer, never by local physics.
+	# Remote copies are driven by the synchronizer, never by local physics —
+	# but they DO keep _physics_process to pin their collider (see below).
 	var local := is_multiplayer_authority()
-	set_physics_process(local)
 	set_process_unhandled_input(local)
 	_prev_position = global_position
 	if local:
@@ -175,6 +179,7 @@ func _ready() -> void:
 		_game_state.registry_changed.connect(_refresh_ghost)
 		_game_state.round_reset.connect(_on_round_reset)
 	_npc_manager = RoundLocator.locate_named(self, ^"NpcManager")
+	_seeker_combat = RoundLocator.locate_named(self, ^"SeekerCombat")
 	_apply_form()
 	_set_rotation_drip(rotation_drip)  # spawn state may precede @onready
 	_refresh_ghost()  # late joiners may spawn into an already-running round
@@ -191,7 +196,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		# UI does not consume recaptures it.
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	elif not _paint_mode and event is InputEventMouseButton and event.pressed:
-		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+			# Any click the UI ignores recaptures the mouse (Phase 2 behavior).
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		elif event.button_index == MOUSE_BUTTON_LEFT and _is_armed_seeker():
+			_fire_paintball()
 	elif event.is_action_pressed("paint_mode"):
 		_enter_paint_mode()
 	elif event.is_action_pressed("form_slime"):
@@ -335,6 +344,17 @@ func _process(delta: float) -> void:
 	_visual.scale = _visual.scale.lerp(target, minf(SQUASH_WEIGHT * delta, 1.0))
 
 func _physics_process(delta: float) -> void:
+	if not is_multiplayer_authority():
+		# Remote copies never simulate, but their COLLIDERS must follow the
+		# synced node transform — the engine-side propagation for these
+		# never-simulated bodies proved unreliable after ghost episodes
+		# (stale phantom colliders lingered at death spots and launched
+		# players parked there; found via the rotation-timer flake). Pinning
+		# the body every tick is cheap (≤ 8 players) and also keeps the
+		# host-side paintball raycasts honest.
+		PhysicsServer3D.body_set_state(get_rid(),
+				PhysicsServer3D.BODY_STATE_TRANSFORM, global_transform)
+		return
 	if _ghosted:
 		return  # frozen where it died; Phase 6 gives the dead a free camera
 	_drain_paint_queue()
@@ -519,6 +539,45 @@ func _reset_feeding() -> void:
 	_slurp_npc = null
 	get_tree().call_group("round_hud", "set_eat_prompt", "", 0.0)
 
+const SPLATTER_SPRAY_STAMPS := 5
+const SPLATTER_SPRAY_COLOR := Color(0.95, 0.2, 0.75)  # the paintball magenta
+
+## A near-miss splatter caught this prop (SPEC.md 11 — "Angesprühte
+## Verstecker müssen übermalen oder fliegen auf"). Only the OWNER converts
+## the spray into its own normal paint-stroke events: exactly-once across
+## the session, and late joiners replay it with the regular paint history.
+func apply_splatter_spray(global_hit: Vector3, seed_value: int) -> void:
+	if not is_multiplayer_authority() or form_id == PlayerForms.SLIME:
+		return
+	if _game_state != null and not _game_state.is_alive(get_multiplayer_authority()):
+		return
+	var center_uv: Vector2 = painter.world_point_to_uv(global_hit)
+	if center_uv.x < 0.0:
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_value
+	_paint_sync.local_stroke(center_uv, SPLATTER_SPRAY_COLOR)
+	for _i in SPLATTER_SPRAY_STAMPS - 1:
+		var jitter := Vector2(rng.randf_range(-0.08, 0.08), rng.randf_range(-0.08, 0.08))
+		var uv := (center_uv + jitter).clamp(Vector2.ZERO, Vector2.ONE)
+		_paint_sync.local_stroke(uv, SPLATTER_SPRAY_COLOR)
+
+## The paintball gun (SPEC.md 11): seekers only, HUNT only, alive only.
+func _is_armed_seeker() -> bool:
+	if _game_state == null or _seeker_combat == null:
+		return false
+	var me := get_multiplayer_authority()
+	return _game_state.current_phase == _game_state.Phase.HUNT \
+			and _game_state.is_seeker(me) and _game_state.is_alive(me)
+
+## Fire straight down the camera center (the crosshair). Coordinates travel
+## parent-relative so the host validates them against its own copy.
+func _fire_paintball() -> void:
+	var dir: Vector3 = -_camera.global_transform.basis.z
+	var muzzle_global: Vector3 = _camera.global_position + dir * 1.0
+	var origin_rel: Vector3 = (get_parent() as Node3D).to_local(muzzle_global)
+	_seeker_combat.request_fire_from(get_multiplayer_authority(), origin_rel, dir)
+
 ## Ghosting is DERIVED state: replicated registry + phase decide it, so every
 ## peer's copy of a dead capsule hides itself without extra sync traffic.
 ## Mid-round joiners (role NONE, not alive) ghost too — they spectate until
@@ -534,8 +593,44 @@ func _refresh_ghost() -> void:
 	_ghosted = should
 	visible = not should
 	collision_layer = 0 if should else 1
-	if should and is_multiplayer_authority() and _paint_mode:
-		_exit_paint_mode()
+	# Disable the SHAPE too, not just the layer: a ghosted authority stops
+	# simulating, and remote copies' kinematic bodies then linger SOLID at the
+	# death spot even after the reset teleports the node away (verified: a
+	# player parked on a corpse spot got depenetration-launched). Re-enabling
+	# re-registers the collider at the current synced transform. Deferred —
+	# shape toggles must not land while the physics space is flushing.
+	_collision.set_deferred("disabled", should)
+	if is_multiplayer_authority():
+		if should and _paint_mode:
+			_exit_paint_mode()
+		if should:
+			_enter_spectator()
+		else:
+			_exit_spectator()
+
+## The dead watch through a free-fly rig next to the corpse (SPEC.md 5.3);
+## LOCAL-ONLY, parented to the world so the invisible body doesn't drag it.
+func _enter_spectator() -> void:
+	if _spectator_rig != null or _game_state == null:
+		return
+	var world := _game_state.get_parent()
+	if world == null:
+		return
+	_spectator_rig = SpectatorCameraScene.instantiate()
+	world.add_child(_spectator_rig)
+	_spectator_rig.global_position = global_position + Vector3(0.0, 2.0, 0.0)
+
+func _exit_spectator() -> void:
+	if _spectator_rig == null:
+		return
+	if is_instance_valid(_spectator_rig):
+		_spectator_rig.queue_free()
+	_spectator_rig = null
+	if _camera != null and is_instance_valid(_camera):
+		_camera.current = true
+
+func _exit_tree() -> void:
+	_exit_spectator()  # a despawning capsule never strands its rig
 
 ## Full per-round reset (SPEC.md 5.3): back to slime (wipes paint via the
 ## epoch), back to the spawn, dry floor. The registry cleared by the host

@@ -17,11 +17,11 @@ evidence. Manual/external validation is never claimed.
 | 2 | feature/npc-slimes-feeding | 1 | ✅ | df5973e | 25/25 new + full regression |
 | 3 | feature/eat-progression-table | 2 | ✅ | ad51c77 | 39/39 new + full regression |
 | 4 | feature/rotation-timer | 3 | ✅ | b4425f8 | 24/24 new + full regression |
-| 5 | feature/win-lose-reset | 4 | ✅ | (head of branch) | 26/26 new + FULL suite (12 files, 437 checks) |
-| 6 | feature/paintball-gun | 5 | ⏳ | — | — |
-| 7 | feature/seeker-splatter | 6 | ⏳ | — | — |
-| 8 | feature/seeker-cooldown | 7 | ⏳ | — | — |
-| 9 | feature/spectator-mode | 8 | ⏳ | — | — |
+| 5 | feature/win-lose-reset | 4 | ✅ | 2837358 | 26/26 new + FULL suite (12 files, 437 checks) |
+| 6 | feature/paintball-gun | 5 | ✅ | 1ba2783 | 19/19 new + FULL suite (13 files, 456 checks) |
+| 7 | feature/seeker-splatter | 6 | ✅ | 474d114 | 15/15 new + FULL suite (14 files, 471 checks) |
+| 8 | feature/seeker-cooldown | 7 | ✅ | 953f07e | 13/13 new + FULL suite (15 files, 484 checks) |
+| 9 | feature/spectator-mode | 8 | ✅ | (head of branch) | 17/17 new + FULL suite (16 files, 501 checks) |
 | 10 | feature/map1-house-graybox | 9 | ⏳ | — | — |
 | 11 | feature/map1-npc-spawn-markers | 10 | ⏳ | — | — |
 | 12 | feature/map1-prop-slots | 11 | ⏳ | — | — |
@@ -165,6 +165,91 @@ evidence. Manual/external validation is never claimed.
   total), boot exit 0, `git diff --check` clean.
 - Manual (Travis): full two-machine round — phases, feeding, unlocks,
   rotation drip, elimination ghosting, END screen, reset. HUD wording.
+
+### 6 · feature/paintball-gun — ✅
+
+- Changed: `scripts/seeker/seeker_combat.gd` + `scripts/seeker/paintball.gd`
+  + `scenes/paintball.tscn` (new — host-validated fire requests, RAY-SWEPT
+  host-side flight so 35 m/s never tunnels 0.2 m walls, direct hit on an
+  alive hider = elimination via the Phase 5 entry, one ball in flight per
+  seeker, shot_hit/shot_missed for the splatter + cooldown branches),
+  `scenes/main.tscn` (Projectiles/ProjectileSpawner/SeekerCombat),
+  `scripts/player_capsule.gd` (LMB fire for armed seekers + crosshair
+  state), round HUD crosshair, `tests/paintball_test.gd` (new).
+- ALSO in this branch — ghost-collider hardening after a real bug hunt:
+  the rotation test flaked (~40 %) because capsules parked on a previous
+  round's exact death spot got depenetration-launched by residual physics
+  state in the shared-space test harness. Evidence trail: phantom collider
+  named by shape query (`ClientWorld/Players/1` body at the death spot
+  while its node showed the seeker box). Production hardenings shipped:
+  (1) ghosts disable their collision SHAPE (walk-through corpses, clean
+  re-registration), (2) remote copies pin their collider to the synced
+  transform every physics tick — protects host-side paintball raycasts
+  too. Phase 3's transform test updated to assert the copy contract
+  behaviorally (no self-simulation) instead of is_physics_processing().
+  Residual harness artifact avoided by parking each test round at fresh
+  coordinates; real-machine ghost/reset behavior stays on Travis' manual
+  checklist (it always was).
+- Tests (2026-07-14): paintball 19/19 (red first: missing combat script;
+  then a test-geometry fix — the wall shot originally flew through the
+  hider's parking spot). rotation_timer 12/12 + 3/3 consecutive green
+  after the fix. FULL suite: 13 files, 456 checks, all exit 0; boot ok;
+  `git diff --check` clean.
+- Manual (Travis): aim feel, projectile speed/arc, two-machine hit
+  registration, crosshair readability.
+
+### 7 · feature/seeker-splatter — ✅
+
+- Changed: `scripts/seeker/splatter_manager.gd` + `scripts/seeker/splatter.gd`
+  + `scenes/splatter.tscn` (new — event-synced {pos, normal, seed}, seeded
+  identical blob clusters on every peer, bounded history with late-join
+  replay, round-reset clear), `scripts/seeker/paintball.gd` (map miss →
+  splatter; mid-air fizzle leaves nothing), `scripts/player_capsule.gd`
+  (apply_splatter_spray — near-miss spray routed through the OWNER's own
+  PaintSync stroke events, exactly-once, late-join safe),
+  `scenes/main.tscn` (Splatters + SplatterManager),
+  `tests/splatter_test.gd` (new).
+- Events-only rule upheld: splatter = 1 RPC with 3 small values; prop spray
+  = normal int64 paint events; no texture ever crosses the wire.
+- Tests (2026-07-14): new test PASS 15/15 (red first: missing manager; one
+  test fix — the cap is a built-in bound and must shrink on every peer).
+  FULL suite: 14 files, 471 checks, boot, diff — all green.
+- Manual (Travis): splatter look/size on surfaces, spray readability on
+  props, two-machine.
+
+### 8 · feature/seeker-cooldown — ✅
+
+- Changed: `scripts/seeker/seeker_combat.gd` (host cooldown ledger keyed on
+  MISSES only — spec-literal "Fehlschuss = 4-s-Cooldown"; a hit re-arms
+  instantly; value from GameState.paintball_cooldown; per-shooter HUD
+  notify; cleared with projectiles on phase change/reset), round HUD
+  ("Nachladen… n.n s" countdown), `tests/cooldown_test.gd` (new, 3 peers
+  so a hit doesn't end the round). Earlier Phase 6 tests updated to shrink
+  the host cooldown setting and wait it out between shots (they predate
+  the mechanic).
+- Note for playtest (SPEC.md 11 Rechenbasis): hit-⇒-no-cooldown is the
+  literal reading; if it proves too generous, the ledger keys on
+  report_hit too — one-line change.
+- Tests (2026-07-14): new test PASS 13/13 (red first: cooldown_left
+  missing). FULL suite: 15 files, 484 checks, boot, diff — green.
+- Manual (Travis): reload feel at the real 4 s, HUD readability.
+
+### 9 · feature/spectator-mode — ✅  (PHASE 6 COMPLETE — implementation)
+
+- Changed: `scripts/round/spectator_camera.gd` + `scenes/spectator_camera.tscn`
+  (new — local-only free-fly rig: WASD camera-relative, Space/Ctrl
+  rise/sink, mouse look; spawned next to the corpse), `scripts/round/dead_chat.gd`
+  (new — host-relayed dead-only chat: dead-sender gate + dead-only fan-out
+  server-side, never in the UI), `scripts/player_capsule.gd` (ghosting on
+  the OWNING machine now hands the view to the rig; reset restores the
+  player camera; _exit_tree never strands a rig), round HUD (Totenchat box
+  + log while dead), `scenes/main.tscn` (DeadChat), `tests/spectator_test.gd`
+  (new).
+- Tests (2026-07-14): new test PASS 17/17 (red first: dead_chat.gd
+  missing) — rig only on the dead machine, chat isolation verified in both
+  directions, END-screen chat between two dead peers, reset cleanup.
+  PHASE 6 EXIT SUITE: 16 files, 501 checks, boot, diff — all green.
+- Manual (Travis): fly feel, chat usability, END-screen flow, two-machine.
 
 ## Risks / open items (running list)
 

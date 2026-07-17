@@ -24,17 +24,28 @@ const NOTICE_SECONDS := 2.5
 @onready var _prompt_progress: ProgressBar = $Prompt/PromptProgress
 @onready var _notice_label: Label = $NoticeLabel
 @onready var _ghost_banner: Label = $GhostBanner
+@onready var _crosshair: Label = $Crosshair
+@onready var _cooldown_label: Label = $CooldownLabel
+@onready var _chat_box: VBoxContainer = $DeadChatBox
+@onready var _chat_log: Label = $DeadChatBox/ChatLog
+@onready var _chat_input: LineEdit = $DeadChatBox/ChatInput
+
+var _dead_chat: Node = null
+var _chat_lines: Array = []
 @onready var _end_panel: PanelContainer = $EndPanel
 @onready var _result_label: Label = $EndPanel/VBox/ResultLabel
 @onready var _outcome_label: Label = $EndPanel/VBox/OutcomeLabel
 
 var _game_state: Node = null
 var _notice_left := 0.0
+var _cooldown_left := 0.0
 
 func _ready() -> void:
 	add_to_group("round_hud")  # capsules push interaction prompts here
 	_game_state = RoundLocator.locate(self)
+	_dead_chat = RoundLocator.locate_named(self, ^"DeadChat")
 	_start_button.pressed.connect(_on_start_pressed)
+	_chat_input.text_submitted.connect(_on_chat_submitted)
 	set_eat_prompt("", 0.0)
 	if _game_state == null:
 		visible = false
@@ -59,11 +70,31 @@ func set_rotation_status(text: String, warn: bool) -> void:
 	_rotation_label.visible = text != ""
 	_rotation_label.modulate = Color(1.0, 0.35, 0.3) if warn else Color.WHITE
 
+## Pushed by SeekerCombat after a miss: reload feedback for the shooter.
+func set_cooldown(seconds: float) -> void:
+	_cooldown_left = seconds
+
+## Pushed by DeadChat on delivery (dead peers only ever receive these).
+func add_dead_chat_line(from_id: int, text: String) -> void:
+	_chat_lines.append("[%d] %s" % [from_id, text])
+	while _chat_lines.size() > 6:
+		_chat_lines.pop_front()
+	_chat_log.text = "\n".join(_chat_lines)
+
+func _on_chat_submitted(text: String) -> void:
+	_chat_input.clear()
+	if _dead_chat != null:
+		_dead_chat.send(text)
+
 func _process(_delta: float) -> void:
 	if _notice_left > 0.0:
 		_notice_left -= _delta
 		if _notice_left <= 0.0:
 			_notice_label.visible = false
+	if _cooldown_left > 0.0:
+		_cooldown_left = maxf(_cooldown_left - _delta, 0.0)
+		_cooldown_label.text = "Nachladen… %.1f s" % _cooldown_left
+	_cooldown_label.visible = _cooldown_left > 0.0
 	_phase_label.text = _game_state.phase_title()
 	if _game_state.current_phase == _game_state.Phase.LOBBY:
 		_timer_label.text = "—"
@@ -76,6 +107,7 @@ func _process(_delta: float) -> void:
 	_start_button.visible = _game_state.can_start_round()
 	_update_ghost_banner()
 	_update_end_panel()
+	_update_crosshair()
 
 func _on_start_pressed() -> void:
 	_game_state.start_round()
@@ -100,12 +132,23 @@ func _eaten_text() -> String:
 func _me() -> int:
 	return multiplayer.get_unique_id() if multiplayer.multiplayer_peer != null else 1
 
-## "Du bist raus" while dead mid-round (ghost until Phase 6's spectator cam).
+## "Du bist raus" while dead mid-round; the dead chat shows whenever this
+## machine's player is dead in a running round or on the END screen.
 func _update_ghost_banner() -> void:
 	var me := _me()
+	var dead: bool = _game_state.players.has(me) and not _game_state.is_alive(me)
 	_ghost_banner.visible = _game_state.current_phase != _game_state.Phase.LOBBY \
-			and _game_state.current_phase != _game_state.Phase.END \
-			and _game_state.players.has(me) and not _game_state.is_alive(me)
+			and _game_state.current_phase != _game_state.Phase.END and dead
+	_chat_box.visible = _game_state.current_phase != _game_state.Phase.LOBBY and dead
+	if not _chat_box.visible and not _chat_lines.is_empty():
+		_chat_lines.clear()
+		_chat_log.text = ""
+
+## Crosshair for the armed seeker (SPEC.md 11 — aim down the camera center).
+func _update_crosshair() -> void:
+	var me := _me()
+	_crosshair.visible = _game_state.current_phase == _game_state.Phase.HUNT \
+			and _game_state.is_seeker(me) and _game_state.is_alive(me)
 
 ## END screen (SPEC.md 5.3): winner side + the personal outcome. No score.
 func _update_end_panel() -> void:
