@@ -1,7 +1,8 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=12 format=3]
 
 [ext_resource type="Script" path="res://scripts/player_capsule.gd" id="1_script"]
 [ext_resource type="Script" path="res://scripts/paint/paint_sync.gd" id="2_paint_sync"]
+[ext_resource type="Script" path="res://scripts/round/rotation_tracker.gd" id="3_rotation_tracker"]
 
 [sub_resource type="SphereMesh" id="SphereMesh_body"]
 radius = 0.55
@@ -22,6 +23,15 @@ height = 0.12
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_eye"]
 albedo_color = Color(0.08, 0.08, 0.08, 1)
 
+[sub_resource type="CylinderMesh" id="CylinderMesh_puddle"]
+top_radius = 0.85
+bottom_radius = 0.85
+height = 0.04
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_puddle"]
+albedo_color = Color(0.35, 0.5, 0.3, 1)
+roughness = 0.15
+
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_1"]
 properties/0/path = NodePath(".:position")
 properties/0/spawn = true
@@ -35,6 +45,9 @@ properties/2/replication_mode = 2
 properties/3/path = NodePath(".:paint_epoch")
 properties/3/spawn = true
 properties/3/replication_mode = 2
+properties/4/path = NodePath(".:rotation_drip")
+properties/4/spawn = true
+properties/4/replication_mode = 2
 
 [node name="PlayerCapsule" type="CharacterBody3D"]
 script = ExtResource("1_script")
@@ -78,3 +91,12 @@ replication_config = SubResource("SceneReplicationConfig_1")
 
 [node name="PaintSync" type="Node" parent="."]
 script = ExtResource("2_paint_sync")
+
+[node name="DripPuddle" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.01, 0, 0, 0, 1, 0, 0, 0, 0.01, 0, 0.03, 0)
+visible = false
+mesh = SubResource("CylinderMesh_puddle")
+surface_material_override/0 = SubResource("StandardMaterial3D_puddle")
+
+[node name="RotationTracker" type="Node" parent="."]
+script = ExtResource("3_rotation_tracker")

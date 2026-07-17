@@ -58,6 +58,8 @@ extends CharacterBody3D
 const PlayerForms := preload("res://scripts/player_forms.gd")
 const PropPainter := preload("res://scripts/paint/prop_painter.gd")
 const Eyedropper := preload("res://scripts/paint/eyedropper.gd")
+const RoundLocator := preload("res://scripts/round/round_locator.gd")
+const Progression := preload("res://scripts/round/progression.gd")
 const PaintHudScene := preload("res://scenes/paint_hud.tscn")
 
 const WALK_SPEED: float = 5.0  # slime base speed; forms scale it — max_speed()
@@ -85,6 +87,7 @@ const PAINT_QUEUE_MAX: int = 32  # queued stamps per physics tick (mouse-move bu
 @onready var _spring_arm: SpringArm3D = $CameraPivot/SpringArm3D
 @onready var _camera: Camera3D = $CameraPivot/SpringArm3D/Camera3D
 @onready var _paint_sync: Node = $PaintSync
+@onready var _drip_puddle: MeshInstance3D = $DripPuddle
 
 var _prev_position: Vector3
 
@@ -100,6 +103,23 @@ var _pending_paint := PackedVector2Array()  # screen points waiting for the phys
 var _eyedrop_pending := false  # Q pressed; resolves next physics tick
 var _paint_hud: CanvasLayer  # local player only (like the camera rig)
 
+## Round state (Phase 5) — resolved via the ancestor-walk locator, null when
+## no GameState exists above this capsule (focused tests spawn bare capsules).
+var _game_state: Node = null
+var _npc_manager: Node = null
+
+const EAT_HOLD_SECONDS := 1.0  # E-hold to slurp an NPC (SPEC.md 7)
+const EAT_REACH := 2.5  # prompt range; the host validates the same reach
+
+var _eat_hold := 0.0
+var _slurp_npc: Node3D = null
+
+## Ghost state (feature/win-lose-reset): eliminated players and mid-round
+## joiners are invisible, non-colliding and input-dead until the round resets
+## (SPEC.md 5.3 — the free spectator camera arrives in Phase 6). Derived from
+## the replicated registry on EVERY peer, so remote copies ghost themselves.
+var _ghosted := false
+
 ## Current form: PlayerForms.SLIME or a PlayerForms.PROPS key. Replicated via
 ## the MultiplayerSynchronizer (on change + spawn state); remote copies and
 ## late joiners apply it through the setter.
@@ -112,6 +132,12 @@ var form_id: String = PlayerForms.SLIME:
 ## transform ordering race always converges. Never decreases.
 var paint_epoch: int = 0:
 	set = _set_paint_epoch
+
+## Loss-of-cohesion drip, 0..1 (SPEC.md 6): written by the RotationTracker on
+## the owning peer during the grace window, replicated on change, and drawn
+## as a growing puddle under the body on EVERY peer via the setter.
+var rotation_drip: float = 0.0:
+	set = _set_rotation_drip
 
 func _enter_tree() -> void:
 	# The host names each capsule after the owning peer's ID (main.gd).
@@ -142,9 +168,20 @@ func _ready() -> void:
 		# Remote copies need no camera rig; their facing arrives via the
 		# synchronizer as $Visual rotation.
 		_camera_pivot.queue_free()
+	_game_state = RoundLocator.locate(self)
+	if _game_state != null:
+		_game_state.roles_assigned.connect(_on_round_roles_assigned)
+		_game_state.phase_changed.connect(_on_round_phase_changed)
+		_game_state.registry_changed.connect(_refresh_ghost)
+		_game_state.round_reset.connect(_on_round_reset)
+	_npc_manager = RoundLocator.locate_named(self, ^"NpcManager")
 	_apply_form()
+	_set_rotation_drip(rotation_drip)  # spawn state may precede @onready
+	_refresh_ghost()  # late joiners may spawn into an already-running round
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _ghosted:
+		return  # the dead don't paint, transform, or recapture the mouse
 	if _paint_mode and _handle_paint_mode_input(event):
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -298,7 +335,10 @@ func _process(delta: float) -> void:
 	_visual.scale = _visual.scale.lerp(target, minf(SQUASH_WEIGHT * delta, 1.0))
 
 func _physics_process(delta: float) -> void:
+	if _ghosted:
+		return  # frozen where it died; Phase 6 gives the dead a free camera
 	_drain_paint_queue()
+	_update_feeding(delta)
 
 	if not is_on_floor():
 		velocity += get_gravity() * delta
@@ -333,10 +373,34 @@ func max_speed() -> float:
 ## neutral white no matter what the slime looks like — SPEC.md 9.1's anti-P2W
 ## rule: the prop scenes own their white material, nothing is inherited.
 ## Authority-only: remote copies change form exclusively via the synchronizer.
+## While a round runs, the SPEC.md 8 eat table gates the size (hiders) and
+## seekers may not transform at all; the lobby stays a free sandbox.
 func transform_to_prop(prop_id: String) -> void:
 	if not is_multiplayer_authority():
 		return
+	if not _may_transform_to(prop_id):
+		return
 	form_id = prop_id
+
+## The eat-table gate (SPEC.md 8). Runs only on the owning peer — remote
+## copies follow the synchronizer, whose values the owner already validated.
+func _may_transform_to(prop_id: String) -> bool:
+	if _game_state == null or not _game_state.is_round_active():
+		return true  # lobby sandbox / bare test capsules
+	var me := get_multiplayer_authority()
+	var role: int = _game_state.role_of(me)
+	if role == _game_state.Role.SEEKER:
+		_flash_notice("Sucher verwandeln sich nicht.")
+		return false
+	if role != _game_state.Role.HIDER:
+		return false  # mid-round spectators have no body to disguise
+	if not Progression.is_size_unlocked(_game_state.eaten_of(me), PlayerForms.size_of(prop_id)):
+		_flash_notice("Noch nicht freigeschaltet — friss NPC-Slimes!")
+		return false
+	return true
+
+func _flash_notice(text: String) -> void:
+	get_tree().call_group("round_hud", "flash_notice", text)
 
 ## Back to slime, allowed at any time (SPEC.md 9.1) — this wipes the paint job
 ## (_apply_form unbinds the painter) and ends paint mode.
@@ -361,6 +425,16 @@ func _set_form_id(value: String) -> void:
 		if is_multiplayer_authority():
 			paint_epoch += 1  # owner: a new form is a new paint lifetime (wipes)
 		_apply_form()  # before ready, _ready()'s _apply_form picks the value up
+
+## Single write path for the drip — tracker (owner) and synchronizer
+## (replicas) both land here; the puddle visual follows on every peer.
+func _set_rotation_drip(value: float) -> void:
+	rotation_drip = clampf(value, 0.0, 1.0)
+	if _drip_puddle == null:
+		return  # spawn state before @onready — _ready() re-applies
+	_drip_puddle.visible = rotation_drip > 0.01
+	var s := maxf(rotation_drip, 0.01)
+	_drip_puddle.scale = Vector3(s, 1.0, s)
 
 ## Single write path for the epoch — owner bumps, synchronizer, and inbound
 ## paint events all land here. An increase wipes the paint (props always
@@ -404,6 +478,117 @@ func _find_prop_mesh(prop: Node) -> MeshInstance3D:
 	var meshes := prop.find_children("*", "MeshInstance3D", true, false)
 	return meshes[0] if meshes.size() > 0 else null
 
+## Feeding (SPEC.md 7): hold E for 1 s next to a sleeping NPC — hiders only,
+## PREP only. This runs on the OWNING peer: it tracks the hold and the slurp
+## cosmetic, then sends ONE eat request that the host validates (phase, role,
+## real distance). Interaction prompts appear only near NPCs; other players
+## are never edible.
+func _update_feeding(delta: float) -> void:
+	if _game_state == null or _npc_manager == null:
+		return
+	var me := get_multiplayer_authority()
+	var eligible: bool = _game_state.current_phase == _game_state.Phase.PREP \
+			and _game_state.role_of(me) == _game_state.Role.HIDER \
+			and _game_state.is_alive(me)
+	var npc: Node3D = null
+	if eligible:
+		npc = _npc_manager.nearest_living_npc(global_position, EAT_REACH)
+	if npc == null:
+		_reset_feeding()
+		return
+	if npc != _slurp_npc:
+		_reset_feeding()
+		_slurp_npc = npc
+	if Input.is_action_pressed("fressen"):
+		_eat_hold += delta
+		npc.set_slurp(_eat_hold / EAT_HOLD_SECONDS)
+		if _eat_hold >= EAT_HOLD_SECONDS:
+			var npc_id: int = npc.npc_id
+			_reset_feeding()
+			_npc_manager.request_eat_from(me, npc_id)
+	else:
+		_eat_hold = 0.0
+		npc.reset_slurp()
+	get_tree().call_group("round_hud", "set_eat_prompt",
+			"[E] Fressen — halten", _eat_hold / EAT_HOLD_SECONDS)
+
+func _reset_feeding() -> void:
+	_eat_hold = 0.0
+	if _slurp_npc != null and is_instance_valid(_slurp_npc):
+		_slurp_npc.reset_slurp()
+	_slurp_npc = null
+	get_tree().call_group("round_hud", "set_eat_prompt", "", 0.0)
+
+## Ghosting is DERIVED state: replicated registry + phase decide it, so every
+## peer's copy of a dead capsule hides itself without extra sync traffic.
+## Mid-round joiners (role NONE, not alive) ghost too — they spectate until
+## the next round instead of roaming the hunt as visible slimes.
+func _refresh_ghost() -> void:
+	if _game_state == null:
+		return
+	var me := get_multiplayer_authority()
+	var should: bool = _game_state.current_phase != _game_state.Phase.LOBBY \
+			and _game_state.players.has(me) and not _game_state.is_alive(me)
+	if should == _ghosted:
+		return
+	_ghosted = should
+	visible = not should
+	collision_layer = 0 if should else 1
+	if should and is_multiplayer_authority() and _paint_mode:
+		_exit_paint_mode()
+
+## Full per-round reset (SPEC.md 5.3): back to slime (wipes paint via the
+## epoch), back to the spawn, dry floor. The registry cleared by the host
+## un-ghosts everyone through _refresh_ghost.
+func _on_round_reset() -> void:
+	if not is_multiplayer_authority():
+		return
+	transform_to_slime()
+	rotation_drip = 0.0
+	_teleport_to_group_marker("player_spawn")
+
+## Round start (SPEC.md 5.1): the owner repositions itself for its role —
+## seekers wait blind in the sealed spawn box, hiders start at the map spawn.
+## Only the authority moves itself; everyone else sees it via the synchronizer.
+func _on_round_roles_assigned() -> void:
+	if not is_multiplayer_authority():
+		return
+	var role: int = _game_state.role_of(get_multiplayer_authority())
+	if role == _game_state.Role.SEEKER:
+		_teleport_to_group_marker("seeker_spawn")
+	elif role == _game_state.Role.HIDER:
+		_teleport_to_group_marker("player_spawn")
+
+## Hunt start (SPEC.md 5.2): seekers are released into the map. Every copy
+## also re-derives its ghost state — the phase is half of that condition.
+func _on_round_phase_changed(phase: int) -> void:
+	_refresh_ghost()
+	if not is_multiplayer_authority():
+		return
+	if phase == _game_state.Phase.HUNT and _game_state.is_seeker(get_multiplayer_authority()):
+		_teleport_to_group_marker("player_spawn")
+
+## Teleport to the first marker in `group` under this capsule's world (the
+## GameState's parent — /root in the real game, the branch root in tests),
+## fanned by registry slot so simultaneous teleports never stack players.
+func _teleport_to_group_marker(group: String) -> void:
+	var world: Node = _game_state.get_parent()
+	if world == null:
+		return
+	var target: Node3D = null
+	for marker in world.find_children("*", "Marker3D", true, false):
+		if marker.is_in_group(group):
+			target = marker
+			break
+	if target == null:
+		return
+	var ids: Array = _game_state.players.keys()
+	ids.sort()
+	var slot := maxi(ids.find(get_multiplayer_authority()), 0)
+	var angle := float(slot) * TAU / 8.0
+	global_position = target.global_position + Vector3(cos(angle), 0.0, sin(angle)) * 1.2
+	velocity = Vector3.ZERO
+
 ## WASD + arrow keys, registered at runtime: project.godot is a central file
 ## no feature branch may touch, so its stock input map stays empty. Physical
 ## keycodes keep WASD in place on non-QWERTY layouts (e.g. German QWERTZ).
@@ -419,9 +604,10 @@ static func _ensure_input_actions() -> void:
 		"form_small": [KEY_2],
 		"form_medium": [KEY_3],
 		"form_large": [KEY_4],
-		# Paint mode toggle (Phase 4). P as in Pinsel; E stays reserved for the
-		# Fressen interaction (SPEC.md 7).
+		# Paint mode toggle (Phase 4). P as in Pinsel; E is Fressen (below).
 		"paint_mode": [KEY_P],
+		# Hold E next to a sleeping NPC to eat it (SPEC.md 7, Phase 5).
+		"fressen": [KEY_E],
 		# 3D eyedropper in paint mode. Q, not E — E is the future Fressen key.
 		"eyedropper": [KEY_Q],
 		# One-click base coat in paint mode (SPEC.md 9.3 Grundieren).
