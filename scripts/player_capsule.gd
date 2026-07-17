@@ -109,6 +109,7 @@ var _paint_hud: CanvasLayer  # local player only (like the camera rig)
 var _game_state: Node = null
 var _npc_manager: Node = null
 var _seeker_combat: Node = null
+var _clone_manager: Node = null
 
 const EAT_HOLD_SECONDS := 1.0  # E-hold to slurp an NPC (SPEC.md 7)
 const EAT_REACH := 2.5  # prompt range; the host validates the same reach
@@ -187,6 +188,7 @@ func _ready() -> void:
 		_game_state.round_reset.connect(_on_round_reset)
 	_npc_manager = RoundLocator.locate_named(self, ^"NpcManager")
 	_seeker_combat = RoundLocator.locate_named(self, ^"SeekerCombat")
+	_clone_manager = RoundLocator.locate_named(self, ^"CloneManager")
 	_apply_form()
 	_set_rotation_drip(rotation_drip)  # spawn state may precede @onready
 	_refresh_ghost()  # late joiners may spawn into an already-running round
@@ -204,12 +206,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	elif not _paint_mode and event is InputEventMouseButton and event.pressed:
 		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
-			# Any click the UI ignores recaptures the mouse (Phase 2 behavior).
+			# Any click the UI ignores recaptures the mouse (Phase 2 behavior)
+			# and leaves any focused text field (manual-validation fix, rd. 2).
+			get_viewport().gui_release_focus()
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		elif event.button_index == MOUSE_BUTTON_LEFT and _is_armed_seeker():
 			_fire_paintball()
 	elif event.is_action_pressed("paint_mode"):
 		_enter_paint_mode()
+	elif event.is_action_pressed("place_clone"):
+		place_clone()
+	elif event.is_action_pressed("swap_teleport"):
+		request_swap()
 	elif event.is_action_pressed("form_slime"):
 		transform_to_slime()
 	elif event.is_action_pressed("form_small"):
@@ -370,8 +378,12 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 
-	# Camera-relative input: W always runs away from the camera.
-	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	# Camera-relative input: W always runs away from the camera. While a text
+	# field owns the keyboard (chat), WASD is typing, not walking (manual-
+	# validation fix, round 2 — same guard as the spectator camera).
+	var input := Vector2.ZERO
+	if not (get_viewport().gui_get_focus_owner() is LineEdit):
+		input = Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var direction := Basis(Vector3.UP, _camera_pivot.rotation.y) * Vector3(input.x, 0.0, input.y)
 
 	var rate := ACCELERATION if direction != Vector3.ZERO else DECELERATION
@@ -569,6 +581,44 @@ func apply_splatter_spray(global_hit: Vector3, seed_value: int) -> void:
 		var uv := (center_uv + jitter).clamp(Vector2.ZERO, Vector2.ONE)
 		_paint_sync.local_stroke(uv, SPLATTER_SPRAY_COLOR)
 
+## Place a clone at the current spot (SPEC.md 10): a static copy of the
+## current form including its paint. The owner snapshots its own compacted
+## paint events; the HOST validates role, budget (eat table) and position.
+func place_clone() -> void:
+	if not is_multiplayer_authority() or _clone_manager == null:
+		return
+	if form_id == PlayerForms.SLIME:
+		_flash_notice("Erst verwandeln — ein Klon kopiert deine Form.")
+		return
+	# Defect-1 fix: the clone appears PLACE_OFFSET in FRONT of the facing —
+	# never overlapping the placer's own body (the old same-spot placement
+	# caused depenetration shoves through the floor). The host floor-snaps
+	# and overlap-checks the spot before spawning.
+	var yaw: float = _visual.rotation.y
+	var spot: Vector3 = position \
+			+ Vector3(-sin(yaw), 0.0, -cos(yaw)) * _clone_manager.PLACE_OFFSET
+	_clone_manager.request_place_from(get_multiplayer_authority(), form_id,
+			spot, yaw, _paint_sync.history_snapshot())
+
+## Tausch-Teleport (SPEC.md 10): ask the host to consume the most recent
+## clone; the landing arrives via CloneManager._do_swap on this machine.
+func request_swap() -> void:
+	if not is_multiplayer_authority() or _clone_manager == null:
+		return
+	_clone_manager.request_swap_from(get_multiplayer_authority())
+
+## Land at the consumed clone's spot. The jump counts as a room change and
+## restarts the rotation timer IMMEDIATELY — SPEC.md 10 defines it so;
+## the 5-second dwell does not apply. Form and paint stay untouched.
+func swap_teleport_to(landing: Vector3) -> void:
+	if not is_multiplayer_authority():
+		return
+	position = landing
+	velocity = Vector3.ZERO
+	var tracker := get_node_or_null(^"RotationTracker")
+	if tracker != null:
+		tracker.reset_timer()
+
 ## The paintball gun (SPEC.md 11): seekers only, HUNT only, alive only.
 func _is_armed_seeker() -> bool:
 	if _game_state == null or _seeker_combat == null:
@@ -710,6 +760,10 @@ static func _ensure_input_actions() -> void:
 		"paint_mode": [KEY_P],
 		# Hold E next to a sleeping NPC to eat it (SPEC.md 7, Phase 5).
 		"fressen": [KEY_E],
+		# Place a clone of the current form + paint (SPEC.md 10, Phase 9).
+		"place_clone": [KEY_C],
+		# Tausch-Teleport to the most recent clone (SPEC.md 10, Phase 9).
+		"swap_teleport": [KEY_T],
 		# 3D eyedropper in paint mode. Q, not E — E is the future Fressen key.
 		"eyedropper": [KEY_Q],
 		# One-click base coat in paint mode (SPEC.md 9.3 Grundieren).

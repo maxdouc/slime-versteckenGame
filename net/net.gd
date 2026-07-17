@@ -50,16 +50,45 @@ var room_code: String = ""
 
 var _webrtc: WebRTCSession = null
 var _lobby_joined_emitted: bool = false
+var _web_pump_cb: JavaScriptObject = null  # keep a ref or the callback is GC'd
 
 func _ready() -> void:
 	multiplayer.peer_connected.connect(_on_peer_connected)
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
 	multiplayer.connected_to_server.connect(_on_connected_to_server)
 	multiplayer.connection_failed.connect(_on_connection_failed)
+	_setup_web_pump()
 
 func _process(_delta: float) -> void:
 	if _webrtc != null:
 		_webrtc.poll()
+
+## Manual-validation fix (defect 2 root cause): in the browser, Godot's whole
+## frame loop — including _process and with it every transport poll — rides on
+## requestAnimationFrame, which the browser FREEZES for hidden or fully
+## occluded tabs. A host whose window goes behind the joiner's therefore
+## stops answering offers, and the join hangs although the signaling log
+## looks complete. This JS interval keeps the transport polled while the tab
+## is hidden (hidden-tab timers are clamped to ~1 Hz, which is plenty for the
+## handshake; pages with active WebRTC are exempt from deeper throttling).
+func _setup_web_pump() -> void:
+	if not OS.has_feature("web"):
+		return
+	_web_pump_cb = JavaScriptBridge.create_callback(_on_web_pump)
+	var window: JavaScriptObject = JavaScriptBridge.get_interface("window")
+	window.__slimeNetPump = _web_pump_cb
+	JavaScriptBridge.eval(
+			"window.__slimeNetPumpTimer = window.__slimeNetPumpTimer || " +
+			"setInterval(function(){ if (window.__slimeNetPump) window.__slimeNetPump(); }, 250);",
+			true)
+
+func _on_web_pump(_args: Array) -> void:
+	# Runs on the browser main thread between engine iterations — never
+	# concurrently with them. Harmlessly redundant while the tab is visible.
+	if _webrtc != null:
+		_webrtc.poll()
+	if multiplayer.multiplayer_peer != null:
+		multiplayer.poll()
 
 ## Host a new lobby on the selected transport. Emits lobby_created(code) once
 ## the room exists, or connection_failed(reason).

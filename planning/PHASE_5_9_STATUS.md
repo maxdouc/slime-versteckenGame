@@ -28,10 +28,11 @@ evidence. Manual/external validation is never claimed.
 | 13 | feature/map1-kenney-dressing | 12 | ✅ | 7e62b90 | 9/9 new + FULL suite (20 files, 542 checks) + import clean |
 | 14 | feature/web-export-smoke-test | 13 | ✅ | cf76dba | CLI export exit 0 + Chrome smoke incl. browser-WebRTC hosting |
 | 15 | feature/itch-playtest-build | 14 | ✅* | 1692a0d | pipeline proven to the API gate; upload blocked: itch email unverified (Travis) |
-| 16 | planning/playtest-protocol | 15 | ✅ | (head of branch) | n/a (docs) |
-| 17 | feature/clones | 16 | ⏳ | — | — |
-| 18 | feature/clone-death-link | 17 | ⏳ | — | — |
-| 19 | feature/clone-swap-teleport | 18 | ⏳ | — | — |
+| 16 | planning/playtest-protocol | 15 | ✅ | 698101d | n/a (docs) |
+| 17 | feature/clones | 16 | ✅ | b6c5678 | 19/19 new + FULL suite (21 files, 561 checks) |
+| 18 | feature/clone-death-link | 17 | ✅ | 9fb2fbe | 15/15 new + FULL suite (22 files, 576 checks) |
+| 19 | feature/clone-swap-teleport | 18 | ✅ | 471e36b | 13/13 new + CHAIN EXIT SUITE (23 files, 589 checks + import + boot) |
+| 20 | fix/phase-5-9-manual-validation | 19 | ✅ | d3d1fd2 + head | round 1: 2 new tests (37+11) + Chrome↔Edge live · round 2: 2 more tests (11+33, 3-player ×8 runs) + 3-context smoke |
 
 ## Preflight evidence (2026-07-14, operator Travis)
 
@@ -395,23 +396,304 @@ evidence. Manual/external validation is never claimed.
 - Docs only — suite unaffected.
 - Manual (Travis+Maxim): adopt/adjust, schedule wave A.
 
+### 17 · feature/clones — ✅
+
+- Changed: `scripts/clones/clone.gd` + `scenes/clone.tscn` (new — static
+  copy: prop scene by form id, registry collision, paint replayed from the
+  owner's compacted event snapshot), `scripts/clones/clone_manager.gd`
+  (new — host-validated placement: sender identity, round active, alive
+  hider, real prop form, budget from the eat table, claimed position vs
+  the host's copy; destroy_clone for 9.2/9.3; round-reset clear; paint
+  snapshot rides IN the spawn data so the spawner's late-join replay
+  carries the identical image for free), `scripts/paint/paint_sync.gd`
+  (history_snapshot), `scripts/player_capsule.gd` (place_clone + KEY_C),
+  round HUD ("Klone: n/m [C]"), `scenes/main.tscn` (Clones/CloneSpawner/
+  CloneManager), `tests/clones_test.gd` (new).
+- Tests (2026-07-15): new test PASS 19/19 (red first: manager missing) —
+  pixel-accurate paint on both peers AND on a late joiner, static after
+  owner repaints, budget 2-at-2-eaten with the third rejected, no decay,
+  reset clear. FULL suite: 21 files, 561 checks, boot, diff — green.
+- Manual (Travis): clone indistinguishability from a player prop,
+  placement feel, two-machine.
+
+### 18 · feature/clone-death-link — ✅
+
+- Changed: `scripts/seeker/paintball.gd` (clone impact branch — destroy
+  the clone via the manager's single despawn path; an ALIVE owner dies
+  through the Phase 5 entry with reason "clone" and the shot counts as a
+  HIT (no cooldown — it downed a player); a dead owner's leftover clone is
+  debris: despawn + MISS with splatter), `tests/clone_death_link_test.gd`
+  (new). The Todes-Link stays exactly as spec'd — SPEC.md 10 calls it a
+  deliberate, twice-confirmed decision; no softening.
+- Tests (2026-07-15): new test PASS 15/15 (red first: 5 link behaviors
+  missing). FULL suite: 22 files, 576 checks, boot, diff — green.
+- Manual (Travis): fairness FEEL of the death link (playtest-watch item
+  per the protocol's clone gate).
+
+### 19 · feature/clone-swap-teleport — ✅  (PHASE 9 + CHAIN COMPLETE — implementation)
+
+- Changed: `scripts/clones/clone_manager.gd` (request_swap host path:
+  sender identity, active round, alive hider; consumes the MOST RECENTLY
+  placed clone — recorded V1 target selection — through the single
+  despawn path, then sends the owner its landing spot; only the owner's
+  machine moves the capsule), `scripts/player_capsule.gd` (request_swap +
+  swap_teleport_to: land, zero velocity, and RotationTracker.reset_timer()
+  IMMEDIATELY — SPEC.md 10 defines the jump as a room change, no 5 s
+  dwell; KEY_T), `tests/clone_swap_test.gd` (new).
+- Tests (2026-07-15): new test PASS 13/13 ×3 consecutive (red first:
+  request_swap missing; one test fix — the no-op check now compares
+  horizontal drift, a settling capsule sinks). CHAIN EXIT SUITE on this
+  final branch: 23 test files / 589 checks, headless import 0 errors,
+  boot exit 0, `git diff --check` clean — ALL GREEN.
+- Manual (Travis): escape-anchor feel, two-machine, and the protocol's
+  clone-cut gate (clones stay the first cut candidate — SPEC.md 10).
+
+### 20 · fix/phase-5-9-manual-validation — ✅  (two blocking defects from Travis' manual validation, 2026-07-17)
+
+**Defect 1 — clones in the floor / swap fall-through.** Root cause chain
+(all three links evidence-backed by red tests):
+
+1. `request_place` spawned the clone exactly AT the placer — the clone's
+   static box fully overlapped the placer's body, and `move_and_slide`
+   depenetration then shoved the player unpredictably. Map-1 floors are
+   0.2 m slabs, so a downward shove tunneled the player through (same
+   shove class as the Phase-7 platform-ride bug).
+2. `request_swap` teleported the owner onto the clone while its collision
+   was still solid (host `queue_free` is end-of-frame; spawner-despawn vs
+   `_do_swap` RPC have no cross-ordering) — same shove on landing.
+3. Nothing floor-validated any y (a mid-air placer produced floating
+   clones — `is_on_floor()` is stale right after a teleport), so buried
+   positions propagated into later placements and swaps.
+
+Fix (SPEC.md 10 only fixes "static copy of the current form", not the
+placement spot — no spec conflict): the clone appears `PLACE_OFFSET`
+(1.3 m) in FRONT of the placer's facing; the HOST floor-snaps the base
+onto the first walkable surface below (ray probe, ε = 0.02 m; players and
+clone tops don't count as floor — no clone towers) and rejects any spot
+whose collision volume would overlap ANYTHING (players, walls, clones);
+blocked placements flash a notice to the placer. Swap: `_do_swap` carries
+the consumed clone id, the owner disarms that clone's local collision
+BEFORE landing, `destroy_clone` disarms immediately before `queue_free`,
+and the landing is the clone's floor-safe base by construction. LIFO
+consumption and the immediate rotation reset are unchanged
+(clone_swap_test still green).
+
+- Changed: `scripts/clones/clone_manager.gd`, `scripts/player_capsule.gd`
+  (place_clone offset), `tests/clone_floor_safety_test.gd` (NEW, 37
+  checks: all three prop sizes place floor-snapped + offset, placer never
+  shoved, swap never dips below the floor (per-frame sampling), blocked
+  spot rejected, 4× place/swap cycles clean), updates to the three
+  existing clone tests (their assertions encoded the buggy at-player
+  placement).
+- Red run first: 7/37 failed exactly on the diagnosed behaviors.
+
+**Defect 2 — Chrome→Edge WebRTC join never completes.** Root cause,
+proven by live reproduction: in the Web build Godot's whole frame loop —
+`_process` and with it every transport/signaling poll — rides on
+`requestAnimationFrame`, which browsers FREEZE for hidden or fully
+occluded tabs. A host whose window is behind the joiner's stops answering
+offers; alternating window focus lets the SDP/ICE messages trickle
+through the signaling log ("offer, answer, candidates both directions")
+while the handshake outlives its deadlines → permanent silent hang.
+mDNS-obfuscated candidates were ruled OUT: with both windows visible the
+Chrome↔Edge join completes in <1 s (link OPEN both sides).
+
+Fix, two layers:
+
+1. Root cause: web-only 250 ms JS interval pump (`Net._setup_web_pump`,
+   JavaScriptBridge) polls the WebRTC session + the MultiplayerAPI while
+   rAF is frozen (hidden-tab timers clamp to ~1 Hz — plenty; WebRTC-active
+   pages are exempt from deeper throttling). Live validation: with the
+   Chrome host FULLY occluded the whole time, the Edge join completed —
+   host console shows offer→answer→OPEN all timestamped inside the
+   occlusion window; joiner spawned in-game ("Peer connected: 1").
+2. Bounded visible failure + diagnostics: every negotiated pair logs
+   connection/gathering/signaling state transitions and each ICE
+   candidate (truncated) to the console, and gets a 20 s deadline
+   (`peer_connect_timeout_ms`). A joiner whose HOST link dies or times
+   out fails the session with a concrete on-screen reason (window
+   visibility hint + ICE-blocked hint) instead of hanging; a host only
+   drops the dead peer and keeps the room. Observed live in repro
+   attempt 1: the stalled join failed visibly at exactly +20 s.
+
+- Changed: `net/net.gd` (pump), `net/webrtc_signaling.gd` (diagnostics,
+  per-pair deadline, `_drop_connection`, failure/warning split),
+  `tests/webrtc_link_timeout_test.gd` (NEW, 11 checks: joiner host-link
+  timeout fails bounded/once/with-detail and prunes the mesh; a host's
+  dead peer is non-fatal; against real never-answered
+  WebRTCPeerConnections, no network).
+- `server/smoke_test.gd` (desktop two-peer end-to-end) still green with
+  the instrumented seam — covers the link-OPEN path.
+
+- Full gates on this branch (2026-07-17): FULL suite 25 test files (all
+  green, see final report), headless import, boot, fresh Web export exit
+  0, live Chrome↔Edge join both visible AND host-occluded, and
+  `git diff --check` clean.
+- Manual (Travis): re-run the original two-browser repro by hand; clone
+  placement feel with the new 1.3 m forward offset (SPEC-compatible,
+  team may still want a different offset); two-machine clone round.
+
+### 21 · fix/phase-5-9-manual-validation — round 2 (2026-07-17, same branch)
+
+**Confirmed defect — dead-chat typing flew the spectator camera.** Root
+cause: the spectator camera (and the capsule) read movement from the
+`Input` singleton's ACTION STATE every frame — raw polling that knows
+nothing about GUI focus, so W/A/S/D typed into the chat LineEdit also
+counted as flight input (hotkeys were never affected: they run through
+`_unhandled_input`, which a focused LineEdit consumes). Fix: both polling
+sites skip movement while `gui_get_focus_owner()` is a LineEdit; Enter
+submits, clears AND releases focus (round_hud); a click outside any
+control releases focus in the same branch that recaptures the mouse
+(spectator + capsule — a click ON the field never reaches
+`_unhandled_input`, so only outside clicks release). Esc behavior
+untouched (first Esc leaves the field — LineEdit built-in — second frees
+the mouse). NEW `tests/dead_chat_focus_test.gd` (11 checks, red first on
+exactly the three fixed behaviors: suppression, Enter release, outside-
+click release) — drives real InputEventKey/Mouse through the headless
+viewport including the Enter submission into the real DeadChat pipeline.
+
+**Intermittent 3-player progression episode — diagnosed, game logic
+cleared, no blind patch.** NEW `tests/three_player_round_test.gd`
+(33 checks) pins the full contract over real ENet with 3 (then 4) full
+worlds: 3 lobby joiners -> exactly 1 seeker + 2 hiders with an identical
+registry everywhere; both hiders eat INDEPENDENTLY from the shared pool
+and unlock strictly by their OWN count (2 eaten = small+medium, 1 eaten =
+medium only, large always); the seeker can neither eat nor transform;
+END -> reset -> LOBBY empties the registry on every world and re-slimes
+(manual host start unchanged — intended); round 2 deals fresh roles with
+progression back at 0 (medium locked again); a MID-ROUND joiner is
+registered NONE+dead on all worlds, cannot transform, and gets a real
+role next round. **8 consecutive runs, 8 × 33 checks green** — under
+every shuffle outcome. The shuffle-based role assignment itself is
+untouched (manually verified as intended; randomness is not a defect).
+
+Most plausible cause of the observed episode, given the cleared game
+logic: the two-Edge-TABS setup — a background tab's frame loop freezes,
+and a peer whose mesh link has not finished opening when the host presses
+start is silently dealt into the round as a NONE spectator (cannot
+transform — the exact symptom; the HUD does show "Zuschauer — nächste
+Runde spielst du mit"). The 2-hider NPC pool is also only 4 slimes, so
+one hider eating 3+ starves the other ("could not progress") — by
+design, but opaque. Hardening (non-behavioral): the host's start button
+now reads "Runde starten (N Spieler)", so a still-connecting peer is
+visible BEFORE the roles are dealt.
+
+Live 3-context browser smoke (Chrome host + TWO separate visible Edge
+windows, CDP-driven): full 3-peer mesh (each Edge OPEN to host AND the
+other Edge), start button showed "(3 Spieler)", round started with host
+= Sucher (boxed) and both Edges = Verstecker with live progression HUDs.
+Cosmetic observation for the backlog: the ✓/✗ glyphs of the forms line
+render as boxes in the web build (missing font glyph).
+
+- Changed: `scripts/round/spectator_camera.gd`, `scripts/round/round_hud.gd`
+  (focus release + start-button count), `scripts/player_capsule.gd`
+  (movement guard + focus release on recapture), 2 new tests.
+- Gates (2026-07-17): full suite 28 files green (see final report),
+  headless import, boot, fresh Web export exit 0, `git diff --check`
+  clean, 3-browser-context smoke as above.
+- Manual (Travis): re-run the 3-player session with three VISIBLE
+  windows; watch the start button count before starting; dead-chat feel
+  (type, Enter, click out) as an eliminated player on a real round.
+
+### 22 · Two-machine Tailscale validation — ✅ PASSED (Travis, 2026-07-17, at ac79b75)
+
+Windows PC (host + signaling server) ↔ MacBook (remote BROWSER client)
+over Tailscale, on this branch at `ac79b75`. Manually verified by Travis:
+
+- remote WebRTC join; both players visible, movement synchronized
+- random seeker/hider roles; phase transitions + timers matched
+- NPC feeding, progression and transformations synchronized
+- painting synchronized
+- paintball, cooldown, elimination and spectator mode
+- dead-chat focus behavior (the round-2 fix)
+- clones, clone death-link, swap teleport; form AND paint correct
+  after the teleport (the round-1 fix)
+- round end, full reset, and a complete second round
+
+This closes the README's "two real machines" requirement for Phases 5–9
+gameplay INCLUDING a real browser client on the second machine. Not yet
+covered manually: rotation-drip feel in a real chase, splatter look on
+surfaces, the Map-1 walkthrough judgment, and public itch multiplayer
+(blocked on public WSS/TLS signaling — deferred deployment item).
+
+### 23 · itch deployment of ac79b75 — ✅ (2026-07-17, deployment + browser smoke only)
+
+- Fresh release Web export from `ac79b75`: exit 0.
+- Page hidden pre-push (anonymous fetch 404, DRAFT badge).
+- `butler push` → channel `ttravis17/slime-verstecken-playtest:web-playtest`,
+  version **20260717-ac79b75**, build **#1803507** (√ processed; 99 %
+  patch reuse over #1801148). Page still 404 anonymously afterwards.
+- Logged-in iframe verification (Chrome): build boots (~15–20 s incl.
+  wasm compile), Map 1 + lobby UI render — the start button shows the
+  NEW "Runde starten (N Spieler)" count, proving the ac79b75 build is
+  live; fullscreen button present, enters full-canvas and Esc returns;
+  console has NO game/engine errors (only automation-extension noise
+  and itch's own expected `screen.orientation.lock()` refusal on
+  desktop); rendering steady and input responsive.
+- NOT covered (intentionally): public browser multiplayer from the itch
+  page — the signaling field still defaults to `127.0.0.1`; public
+  WSS/TLS signaling (and a TURN decision) remain the deferred
+  deployment items before any tester wave.
+
+### 24 · Final manual review — ✅ ACCEPTED FOR V1 (Travis + Maxim, 2026-07-17)
+
+The last three manual judgment items were reviewed together and accepted:
+
+- rotation drip / cohesion-loss visual and the grace-period feel (Phase 5)
+- paint-splatter appearance on surfaces (Phase 6)
+- Map 1 walkthrough: scale, doorways, room layout, furniture placement,
+  overall dressed-house plausibility (Phase 7)
+
+With this, **V1 gameplay / foundation for Phases 5–9 is COMPLETE** on this
+branch: automated suite 28 files / 681 checks green, Windows↔MacBook
+Tailscale two-machine validation (section 22), hidden itch build
+`20260717-ac79b75` deployed and smoke-tested (section 23), and the final
+visual walkthrough above. No gameplay was changed for this record.
+
+Still explicitly OUT of this completion (post-foundation work):
+
+- **Public internet multiplayer deployment**: public WSS/TLS signaling
+  hosting plus the TURN-relay decision — a separate deployment task that
+  must land BEFORE any external tester wave.
+- **Community playtest rollout** (waves per planning/PLAYTEST_PROTOCOL.md).
+- Cosmetic backlog: the ✓/✗ glyphs of the forms HUD line render as boxes
+  in the web build (missing font glyph).
+
 ## Risks / open items (running list)
 
-- Native WebRTC on macOS still untested (missing macOS webrtc_native
-  framework) — pre-existing platform gap, unchanged by this chain.
-- itch page visibility can only be verified, never changed, by automation;
-  browser-embed settings on the page are manual (Travis).
+- **POST-FOUNDATION DEPLOYMENT TASK (before any external tester wave):**
+  public WSS/TLS signaling hosting + the TURN-relay decision. The itch
+  build's signaling field still defaults to `127.0.0.1`; public browser
+  multiplayer is intentionally NOT part of the V1-foundation acceptance.
+- Community playtest rollout (waves, survey, Discord — see
+  planning/PLAYTEST_PROTOCOL.md) follows the deployment task.
+- Cosmetic backlog: ✓/✗ glyphs of the forms HUD line render as boxes in
+  the web build (missing font glyph) — visual only, accepted for now.
+- Native WebRTC on macOS (DESKTOP builds) still untested — missing macOS
+  webrtc_native framework; pre-existing platform gap. The Mac BROWSER
+  client works (section 22).
+- itch channel serves `20260717-ac79b75` (build #1803507), page hidden,
+  embed options set (1280×720, SharedArrayBuffer, fullscreen).
+- Hidden-tab timers clamp to ~1 Hz: a HOST whose tab stays hidden for
+  minutes keeps answering joins (validated), but the ROUND logic still
+  runs at rAF pace — long-hidden hosts remain a playtest-watch item.
 
 ## Manual validation checklist for Travis (grows per branch)
 
-- [ ] Phase 5: full round on two real machines (phases, feeding, unlocks,
-      rotation drip, win/reset).
-- [ ] Phase 6: seeker duel on two machines (hit reg, splatter look,
-      cooldown feel, spectating + dead chat).
-- [ ] Phase 7: house walkthrough (scale, doorways, prop plausibility,
-      dressed look).
-- [ ] Phase 8: browser build on a second real browser/machine; itch page
-      embed settings; decide when/how testers get the hidden link.
-- [ ] Phase 9: clone rounds on two machines (paint fidelity, death link
-      fairness, swap escapes).
-- [ ] Only after the above: mark phases Done in BUILD_PLAN.md (via PR).
+- [x] Phase 5: full round on two real machines — PASSED 2026-07-17
+      (Windows↔Mac/Tailscale, section 22); rotation-drip / grace feel
+      ACCEPTED in the final review (section 24).
+- [x] Phase 6: seeker kit on two machines — PASSED 2026-07-17 (paintball,
+      cooldown, elimination, spectator + dead chat); splatter look
+      ACCEPTED in the final review (section 24).
+- [x] Phase 7: house walkthrough (scale, doorways, prop plausibility,
+      dressed look) — ACCEPTED in the final review (section 24).
+- [x] Phase 8: browser build on a second real machine — PASSED 2026-07-17
+      (MacBook browser client); embed settings set; hidden build
+      20260717-ac79b75 live. Still open (post-foundation): public
+      WSS/TLS signaling + TURN decision, then the tester-link rollout.
+- [x] Phase 9: clone rounds on two machines — PASSED 2026-07-17 (paint
+      fidelity through swap, death link, swap escapes).
+- [x] BUILD_PLAN.md updated 2026-07-17: Phases 5–9 marked complete on
+      this chain. The MERGE of the chain into main still happens via
+      PRs reviewed with Maxim — nothing is merged by automation.

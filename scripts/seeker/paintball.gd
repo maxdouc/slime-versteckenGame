@@ -28,12 +28,14 @@ var _age := 0.0
 var _resolved := false
 var _combat: Node = null
 var _splatter_manager: Node = null
+var _clone_manager: Node = null
 var _game_state: Node = null
 var _exclude: Array = []  # the shooter's body RID — you cannot shoot yourself
 
 func _ready() -> void:
 	_combat = RoundLocator.locate_named(self, ^"SeekerCombat")
 	_splatter_manager = RoundLocator.locate_named(self, ^"SplatterManager")
+	_clone_manager = RoundLocator.locate_named(self, ^"CloneManager")
 	_game_state = RoundLocator.locate(self)
 	_velocity = launch_dir.normalized() * SPEED
 	if not is_multiplayer_authority():
@@ -70,6 +72,22 @@ func _resolve_impact(collider: Object, at: Vector3, normal: Vector3) -> void:
 				and _game_state.is_alive(victim):
 			_resolved = true
 			_game_state.eliminate_player(victim, "paintball")
+			if _combat != null:
+				_combat.report_hit(shot_id, shooter_id)
+			queue_free()
+			return
+	# Todes-Link (SPEC.md 10): a destroyed clone kills its owner. Downing a
+	# player through their clone is a HIT; popping a dead owner's leftover
+	# clone is debris — a miss like any wall (splatter marks the spot).
+	if collider is Node and (collider as Node).is_in_group("clone") \
+			and _game_state != null:
+		var clone_owner: int = collider.owner_id
+		if _clone_manager != null:
+			_clone_manager.destroy_clone(collider.clone_id)
+		if _game_state.role_of(clone_owner) == _game_state.Role.HIDER \
+				and _game_state.is_alive(clone_owner):
+			_resolved = true
+			_game_state.eliminate_player(clone_owner, "clone")
 			if _combat != null:
 				_combat.report_hit(shot_id, shooter_id)
 			queue_free()
