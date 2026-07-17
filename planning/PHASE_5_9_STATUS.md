@@ -25,10 +25,10 @@ evidence. Manual/external validation is never claimed.
 | 10 | feature/map1-house-graybox | 9 | ✅ | abcaa17 | 15/15 new + FULL suite (17 files, 516 checks) |
 | 11 | feature/map1-npc-spawn-markers | 10 | ✅ | e0e1ae1 | 7/7 new + FULL suite (18 files, 523 checks) |
 | 12 | feature/map1-prop-slots | 11 | ✅ | b0b8549 | 10/10 new + FULL suite (19 files, 533 checks) |
-| 13 | feature/map1-kenney-dressing | 12 | ✅ | (head of branch) | 9/9 new + FULL suite (20 files, 542 checks) + import clean |
-| 14 | feature/web-export-smoke-test | 13 | ⏳ | — | — |
-| 15 | feature/itch-playtest-build | 14 | ⏳ | — | — |
-| 16 | planning/playtest-protocol | 15 | ⏳ | — | — |
+| 13 | feature/map1-kenney-dressing | 12 | ✅ | 7e62b90 | 9/9 new + FULL suite (20 files, 542 checks) + import clean |
+| 14 | feature/web-export-smoke-test | 13 | ✅ | cf76dba | CLI export exit 0 + Chrome smoke incl. browser-WebRTC hosting |
+| 15 | feature/itch-playtest-build | 14 | ✅* | 1692a0d | pipeline proven to the API gate; upload blocked: itch email unverified (Travis) |
+| 16 | planning/playtest-protocol | 15 | ✅ | (head of branch) | n/a (docs) |
 | 17 | feature/clones | 16 | ⏳ | — | — |
 | 18 | feature/clone-death-link | 17 | ⏳ | — | — |
 | 19 | feature/clone-swap-teleport | 18 | ⏳ | — | — |
@@ -327,6 +327,73 @@ evidence. Manual/external validation is never claimed.
   + boot — all green.
 - Manual (Travis): the LOOK (dressing judgment is the point of this
   branch); Kenney-vs-Synty stays open until the playtest gate.
+
+### 14 · feature/web-export-smoke-test — ✅
+
+- Changed: `tools/serve_web.ps1` (new — COOP/COEP static server on
+  HttpListener; per-request fault isolation, HEAD support; PowerShell
+  because this machine has no Python) + `tools/README.md` (export → serve
+  → test pipeline). Build artifacts NOT committed (`/export/` ignored).
+- Evidence (2026-07-15, Chrome on localhost:8060):
+  - CLI export: `--headless --export-release "Web"` exit 0 → index.html,
+    38.8 MB wasm, 1.5 MB pck.
+  - Headers verified on GET and HEAD: COOP same-origin + COEP require-corp.
+  - Startup: page title Slime-Verstecken, the DRESSED Map 1 renders with
+    the lobby UI + round HUD (screenshots taken).
+  - Browser-WebRTC HOSTING WORKS (stretch goal): local signaling server →
+    room code EC6E6K issued, slime capsule spawned, third-person camera on.
+  - Controls: W moved the slime (visual delta across screenshots); Esc
+    freed the mouse; "Runde starten" ran a solo round — HUD flipped to
+    "Vorbereitung 1:00 / Verstecker / Gefressen: 0" with the unlock line,
+    and a live "[E] Fressen" prompt proved NPC spawning on the web build.
+  - Console: no app errors. One benign "pointer lock" exception under
+    automated input (watch item for the itch embed). No failing network
+    requests observed after tracking started; full asset load evidenced by
+    the running game.
+  - First Host attempt timed out client-side while the tab was throttled
+    by Chrome (background-tab rAF stall) — retried focused, worked. Real
+    players keep the tab focused; noted as playtest-instructions material.
+- Two-tab WebRTC join was NOT completed (single automated session drove
+  one tab; joining needs a second focused tab — Chrome throttles the
+  unfocused one). Honest status: hosting proven from the browser, browser
+  ↔ browser join remains on the manual two-machine checklist (it always
+  was — README rule).
+- Manual (Travis): performance judgment, second real browser/machine.
+
+### 15 · feature/itch-playtest-build — ✅* (honest attempt; upload blocked externally)
+
+- Changed: `tools/push_playtest.md` (new — the binding upload procedure:
+  fresh export → anonymous visibility pre-check → versioned butler push →
+  status verify → in-page browser check; plus the attempt log).
+- Evidence (2026-07-15):
+  - Fresh export exit 0.
+  - Anonymous fetch of https://ttravis17.itch.io/slime-verstecken-playtest
+    → HTTP 404: the page is draft/hidden ✓ (upload would stay private).
+  - `butler push --help` inspected: NO visibility flag exists — the
+    goal's "create it hidden" is carried by the page's draft state, which
+    only the itch dashboard can change. Recorded.
+  - `butler push export/web …:web-playtest --userversion 20260715-cf76dba`
+    → **REFUSED by itch.io API (400): "Please verify your account's email
+    address before uploading a build."** This is an account-state gate
+    only Travis can clear (verification link in his inbox). Butler auth
+    itself is fine (the same credentials read the project). No retry
+    spamming; no workaround attempted (none is legitimate).
+- Morning action (Travis): verify the itch account email, then rerun the
+  four commands in tools/push_playtest.md — everything up to the API gate
+  is proven working. Then set the page's browser-embed options.
+
+### 16 · planning/playtest-protocol — ✅  (PHASE 8 COMPLETE — implementation)
+
+- `planning/PLAYTEST_PROTOCOL.md` (new, German for the community): 3-wave
+  Discord rollout (4-6 → ~20 → ~100), per-session metrics (join success,
+  disconnects, FPS feel + one real measurement, elimination causes split
+  rotation/paintball/clone, eats, Grundieren usage), a 10-question survey,
+  and the three decision gates: Kenney-vs-Synty (SPEC.md 14), cooldown
+  tuning (SPEC.md 11), clone cut (SPEC.md 10). Closes the SPEC.md 16 open
+  point. Also lists the real preconditions: itch email verification,
+  public signaling host + WSS before wave B, browser↔browser join check.
+- Docs only — suite unaffected.
+- Manual (Travis+Maxim): adopt/adjust, schedule wave A.
 
 ## Risks / open items (running list)
 
