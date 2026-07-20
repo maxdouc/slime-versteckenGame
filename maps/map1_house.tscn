@@ -89,6 +89,17 @@ size = Vector3(0.2, 3, 6.4)
 [sub_resource type="BoxShape3D" id="BoxShape3D_h6llu"]
 size = Vector3(0.2, 3, 6.4)
 
+; Neutral color ambient fills every surface that faces away from the sun so no
+; side of a prop goes pitch black — the paint bug from the playtest. Color source
+; (not Sky/SDFGI) is the only cheap ambient the gl_compatibility web renderer
+; supports; kept near-white so it never tints the color a player is judging.
+[sub_resource type="Environment" id="Environment_house"]
+background_mode = 1
+background_color = Color(0.72, 0.76, 0.82, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.9, 0.91, 0.95, 1)
+ambient_light_energy = 0.45
+
 [node name="Map1House" type="Node3D" unique_id=1823188931]
 
 [node name="Floor_kueche" type="StaticBody3D" parent="." unique_id=125924848]
@@ -884,5 +895,64 @@ omni_range = 8.0
 [node name="SeekerSpawnPoint" type="Marker3D" parent="SeekerSpawnRoom" unique_id=427946273 groups=["seeker_spawn"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1408365916]
+environment = SubResource("Environment_house")
+
+; Sun energy pulled down from the default 1.0: with the new ambient + per-room
+; fill lights carrying the base exposure, the directional is now an accent, so
+; the lit/dark contrast (the "hard shadow" edge) is much gentler. Cast shadows
+; stay off (default) — they are the expensive part on the web renderer and would
+; reintroduce the dark faces we are removing.
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1408365915]
 transform = Transform3D(0.8660254, 0.38302222, -0.32139382, 0, 0.64278764, 0.76604444, 0.5, -0.66341394, 0.5566704, 0, 8, 0)
+light_energy = 0.7
+
+; One dim, shadowless OmniLight per living room — analogous to the seeker room's
+; BoxLight — placed just under the 3 m wall top at each room centre. Lights the
+; walls and props from a second (overhead) direction so surfaces read from all
+; sides. Shadowless omnis are cheap; each walled room exposes only its own light
+; plus the sun to any prop, well under the compatibility per-object light cap.
+[node name="RoomLight_kueche" type="OmniLight3D" parent="." unique_id=1408365930]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 2.6, -6)
+light_energy = 0.6
+omni_range = 8.0
+
+[node name="RoomLight_esszimmer" type="OmniLight3D" parent="." unique_id=1408365931]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 2.6, 0)
+light_energy = 0.6
+omni_range = 8.0
+
+[node name="RoomLight_wohnzimmer" type="OmniLight3D" parent="." unique_id=1408365932]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 2.6, 6)
+light_energy = 0.6
+omni_range = 8.0
+
+[node name="RoomLight_abstellraum" type="OmniLight3D" parent="." unique_id=1408365933]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, -6)
+light_energy = 0.6
+omni_range = 8.0
+
+[node name="RoomLight_flur" type="OmniLight3D" parent="." unique_id=1408365934]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 0)
+light_energy = 0.6
+omni_range = 8.0
+
+[node name="RoomLight_kinderzimmer" type="OmniLight3D" parent="." unique_id=1408365935]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.6, 6)
+light_energy = 0.6
+omni_range = 8.0
+
+[node name="RoomLight_bad" type="OmniLight3D" parent="." unique_id=1408365936]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 2.6, -6)
+light_energy = 0.6
+omni_range = 8.0
+
+[node name="RoomLight_schlafzimmer" type="OmniLight3D" parent="." unique_id=1408365937]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 2.6, 0)
+light_energy = 0.6
+omni_range = 8.0
+
+[node name="RoomLight_buero" type="OmniLight3D" parent="." unique_id=1408365938]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 2.6, 6)
+light_energy = 0.6
+omni_range = 8.0
