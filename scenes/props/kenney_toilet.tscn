@@ -1,0 +1,18 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/props/static_prop.gd" id="1_static_prop"]
+[ext_resource type="PackedScene" path="res://assets/kenney/furniture_kit/toilet.glb" id="2_model"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wc"]
+size = Vector3(0.52, 0.75, 0.794)
+
+[node name="KenneyToilet" type="StaticBody3D"]
+script = ExtResource("1_static_prop")
+size_class = "medium"
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+transform = Transform3D(1.6631, 0, 0, 0, 1.6631, 0, 0, 0, 1.6631, -0.2599, 0, -0.3968)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.375, 0)
+shape = SubResource("BoxShape3D_wc")

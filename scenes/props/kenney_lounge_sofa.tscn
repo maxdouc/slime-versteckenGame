@@ -1,0 +1,18 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/props/static_prop.gd" id="1_static_prop"]
+[ext_resource type="PackedScene" path="res://assets/kenney/furniture_kit/loungeSofa.glb" id="2_model"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_sofa"]
+size = Vector3(1.598, 0.75, 0.668)
+
+[node name="KenneyLoungeSofa" type="StaticBody3D"]
+script = ExtResource("1_static_prop")
+size_class = "large"
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+transform = Transform3D(1.6304, 0, 0, 0, 1.6304, 0, 0, 0, 1.6304, -0.7989, 0, 0.3342)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.375, 0)
+shape = SubResource("BoxShape3D_sofa")
