@@ -1,0 +1,18 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/props/static_prop.gd" id="1_static_prop"]
+[ext_resource type="PackedScene" path="res://assets/kenney/furniture_kit/bedSingle.glb" id="2_model"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_beds"]
+size = Vector3(0.761, 0.5, 1.5)
+
+[node name="KenneyBedSingle" type="StaticBody3D"]
+script = ExtResource("1_static_prop")
+size_class = "large"
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+transform = Transform3D(1.3333, 0, 0, 0, 1.3333, 0, 0, 0, 1.3333, -0.894, 0, 0.75)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+shape = SubResource("BoxShape3D_beds")

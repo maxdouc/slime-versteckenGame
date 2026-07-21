@@ -2,7 +2,6 @@
 
 [ext_resource type="Script" path="res://scripts/round/room_volume.gd" id="1_32bsd"]
 [ext_resource type="PackedScene" path="res://scenes/props/kenney_fridge.tscn" id="2_3nlac"]
-[ext_resource type="Script" path="res://scripts/props/static_prop.gd" id="3_iu5ex"]
 [ext_resource type="PackedScene" path="res://scenes/props/kenney_trashcan.tscn" id="4_kn16g"]
 [ext_resource type="PackedScene" path="res://scenes/props/kenney_radio.tscn" id="5_jil2d"]
 [ext_resource type="PackedScene" path="res://scenes/props/kenney_books.tscn" id="6_fa5lj"]
@@ -10,6 +9,20 @@
 [ext_resource type="PackedScene" path="res://scenes/props/kenney_potted_plant.tscn" id="8_pssvn"]
 [ext_resource type="PackedScene" path="res://scenes/props/kenney_cardboard_box.tscn" id="9_yrcit"]
 [ext_resource type="PackedScene" path="res://scenes/props/kenney_table_lamp.tscn" id="10_gef5i"]
+[ext_resource type="PackedScene" path="res://scenes/props/kenney_kitchen_stove.tscn" id="11_stove"]
+[ext_resource type="PackedScene" path="res://scenes/props/kenney_kitchen_sink.tscn" id="12_ksink"]
+[ext_resource type="PackedScene" path="res://scenes/props/kenney_bathtub.tscn" id="13_tub"]
+[ext_resource type="PackedScene" path="res://scenes/props/kenney_toilet.tscn" id="14_wc"]
+[ext_resource type="PackedScene" path="res://scenes/props/kenney_bathroom_sink.tscn" id="15_bsink"]
+[ext_resource type="PackedScene" path="res://scenes/props/kenney_bed_double.tscn" id="16_bedd"]
+[ext_resource type="PackedScene" path="res://scenes/props/kenney_cabinet_bed_drawer.tscn" id="17_cab"]
+[ext_resource type="PackedScene" path="res://scenes/props/kenney_lounge_sofa.tscn" id="18_sofa"]
+[ext_resource type="PackedScene" path="res://scenes/props/kenney_television.tscn" id="19_tv"]
+[ext_resource type="PackedScene" path="res://scenes/props/kenney_table.tscn" id="20_table"]
+[ext_resource type="PackedScene" path="res://scenes/props/kenney_chair.tscn" id="21_chair"]
+[ext_resource type="PackedScene" path="res://scenes/props/kenney_bed_single.tscn" id="22_beds"]
+[ext_resource type="PackedScene" path="res://scenes/props/kenney_desk.tscn" id="23_desk"]
+[ext_resource type="PackedScene" path="res://scenes/props/kenney_chair_desk.tscn" id="24_cdesk"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7ji82"]
 albedo_color = Color(0.93, 0.88, 0.6, 1)
@@ -90,7 +103,7 @@ size = Vector3(0.2, 3, 6.4)
 size = Vector3(0.2, 3, 6.4)
 
 ; Neutral color ambient fills every surface that faces away from the sun so no
-; side of a prop goes pitch black — the paint bug from the playtest. Color source
+; side of a prop goes pitch black â€” the paint bug from the playtest. Color source
 ; (not Sky/SDFGI) is the only cheap ambient the gl_compatibility web renderer
 ; supports; kept near-white so it never tints the color a player is judging.
 [sub_resource type="Environment" id="Environment_house"]
@@ -687,151 +700,150 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.15, 7.5)
 [node name="NpcSpawn_30" type="Marker3D" parent="." unique_id=2001248192 groups=["npc_spawn"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.5, 0.15, 8)
 
-[node name="Decoy_large_01" type="StaticBody3D" parent="." unique_id=670589232 instance=ExtResource("2_3nlac")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.8, 0.1, -8.2)
-script = ExtResource("3_iu5ex")
+; ---- Dressing pass 2 â€” themed furniture per room (grid layout unchanged) ------
+; Each room reads as a clear function and holds large/medium/small hiding cover.
+; Walkways and doorway lanes are kept clear; nothing reaches the ceiling lights.
 
-[node name="Decoy_medium_01" type="StaticBody3D" parent="." unique_id=1723716666 instance=ExtResource("4_kn16g")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.3, 0.1, -5.6)
-script = ExtResource("3_iu5ex")
-size_class = "medium"
+; --- Kueche (kitchen) ---
+[node name="Kitchen_fridge" type="StaticBody3D" parent="." instance=ExtResource("2_3nlac")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.4, 0.1, -8.4)
 
-[node name="Decoy_small_01" type="StaticBody3D" parent="." unique_id=1314009549 instance=ExtResource("5_jil2d")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.2, 0.1, -3.4)
-script = ExtResource("3_iu5ex")
-size_class = "small"
+[node name="Kitchen_stove" type="StaticBody3D" parent="." instance=ExtResource("11_stove")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.8, 0.1, -8.35)
 
-[node name="Decoy_small_x_01" type="StaticBody3D" parent="." unique_id=553234745 instance=ExtResource("6_fa5lj")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.6, 0.1, -8.6)
-script = ExtResource("3_iu5ex")
-size_class = "small"
+[node name="Kitchen_sink" type="StaticBody3D" parent="." instance=ExtResource("12_ksink")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.2, 0.1, -8.4)
 
-[node name="Decoy_large_02" type="StaticBody3D" parent="." unique_id=1971906816 instance=ExtResource("7_xxpb8")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.8, 0.1, -2.2)
-script = ExtResource("3_iu5ex")
+[node name="Kitchen_trashcan" type="StaticBody3D" parent="." instance=ExtResource("4_kn16g")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.5, 0.1, -6.2)
 
-[node name="Decoy_medium_02" type="StaticBody3D" parent="." unique_id=1492531746 instance=ExtResource("8_pssvn")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.3, 0.1, 0.4)
-script = ExtResource("3_iu5ex")
-size_class = "medium"
+[node name="Kitchen_radio" type="StaticBody3D" parent="." instance=ExtResource("5_jil2d")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.5, 0.1, -4.6)
 
-[node name="Decoy_small_02" type="StaticBody3D" parent="." unique_id=1190832255 instance=ExtResource("6_fa5lj")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.2, 0.1, 2.6)
-script = ExtResource("3_iu5ex")
-size_class = "small"
+; --- Esszimmer (dining) ---
+[node name="Dining_table" type="StaticBody3D" parent="." instance=ExtResource("20_table")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -6.9, 0.1, 0)
 
-[node name="Decoy_large_03" type="StaticBody3D" parent="." unique_id=1729926936 instance=ExtResource("7_xxpb8")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.8, 0.1, 3.8)
-script = ExtResource("3_iu5ex")
+[node name="Dining_chair_n" type="StaticBody3D" parent="." instance=ExtResource("21_chair")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.9, 0.1, -1.3)
 
-[node name="Decoy_medium_03" type="StaticBody3D" parent="." unique_id=2022446113 instance=ExtResource("8_pssvn")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.3, 0.1, 6.4)
-script = ExtResource("3_iu5ex")
-size_class = "medium"
+[node name="Dining_chair_s" type="StaticBody3D" parent="." instance=ExtResource("21_chair")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -6.9, 0.1, 1.3)
 
-[node name="Decoy_small_03" type="StaticBody3D" parent="." unique_id=1437495354 instance=ExtResource("6_fa5lj")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.2, 0.1, 8.6)
-script = ExtResource("3_iu5ex")
-size_class = "small"
+[node name="Dining_plant" type="StaticBody3D" parent="." instance=ExtResource("8_pssvn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.4, 0.1, -2.4)
 
-[node name="Decoy_large_04" type="StaticBody3D" parent="." unique_id=1577239131 instance=ExtResource("9_yrcit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.2, 0.1, -8.2)
-script = ExtResource("3_iu5ex")
+[node name="Dining_lamp" type="StaticBody3D" parent="." instance=ExtResource("10_gef5i")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.4, 0.1, 2.4)
 
-[node name="Decoy_medium_04" type="StaticBody3D" parent="." unique_id=1810628606 instance=ExtResource("4_kn16g")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.3, 0.1, -5.6)
-script = ExtResource("3_iu5ex")
-size_class = "medium"
+; --- Wohnzimmer (living room) ---
+[node name="Living_sofa" type="StaticBody3D" parent="." instance=ExtResource("18_sofa")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -6.4, 0.1, 8.3)
 
-[node name="Decoy_small_04" type="StaticBody3D" parent="." unique_id=549867980 instance=ExtResource("5_jil2d")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.8, 0.1, -3.4)
-script = ExtResource("3_iu5ex")
-size_class = "small"
+[node name="Living_tv" type="StaticBody3D" parent="." instance=ExtResource("19_tv")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.0, 0.1, 3.5)
 
-[node name="Decoy_medium_x_04" type="StaticBody3D" parent="." unique_id=997060342 instance=ExtResource("4_kn16g")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.4, 0.1, -5.4)
-script = ExtResource("3_iu5ex")
-size_class = "medium"
+[node name="Living_bookcase" type="StaticBody3D" parent="." instance=ExtResource("7_xxpb8")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -8.5, 0.1, 6.5)
 
-[node name="Decoy_large_05" type="StaticBody3D" parent="." unique_id=1091472133 instance=ExtResource("9_yrcit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.2, 0.1, -2.2)
-script = ExtResource("3_iu5ex")
+[node name="Living_plant" type="StaticBody3D" parent="." instance=ExtResource("8_pssvn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.4, 0.1, 4.4)
 
-[node name="Decoy_medium_05" type="StaticBody3D" parent="." unique_id=1840277567 instance=ExtResource("4_kn16g")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.3, 0.1, 0.4)
-script = ExtResource("3_iu5ex")
-size_class = "medium"
+[node name="Living_lamp" type="StaticBody3D" parent="." instance=ExtResource("10_gef5i")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.0, 0.1, 8.4)
 
-[node name="Decoy_small_05" type="StaticBody3D" parent="." unique_id=694466291 instance=ExtResource("5_jil2d")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.8, 0.1, 2.6)
-script = ExtResource("3_iu5ex")
-size_class = "small"
+; --- Abstellraum (storage) ---
+[node name="Storage_box_1" type="StaticBody3D" parent="." instance=ExtResource("9_yrcit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.2, 0.1, -8.3)
 
-[node name="Decoy_small_x_05" type="StaticBody3D" parent="." unique_id=2124302759 instance=ExtResource("10_gef5i")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.1, -2.6)
-script = ExtResource("3_iu5ex")
-size_class = "small"
+[node name="Storage_box_2" type="StaticBody3D" parent="." instance=ExtResource("9_yrcit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, -8.3)
 
-[node name="Decoy_large_06" type="StaticBody3D" parent="." unique_id=238650949 instance=ExtResource("9_yrcit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.2, 0.1, 3.8)
-script = ExtResource("3_iu5ex")
+[node name="Storage_bookcase" type="StaticBody3D" parent="." instance=ExtResource("7_xxpb8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.2, 0.1, -8.3)
 
-[node name="Decoy_medium_06" type="StaticBody3D" parent="." unique_id=810930633 instance=ExtResource("8_pssvn")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.3, 0.1, 6.4)
-script = ExtResource("3_iu5ex")
-size_class = "medium"
+[node name="Storage_trashcan" type="StaticBody3D" parent="." instance=ExtResource("4_kn16g")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0.1, -4.6)
 
-[node name="Decoy_small_06" type="StaticBody3D" parent="." unique_id=681995568 instance=ExtResource("10_gef5i")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.8, 0.1, 8.6)
-script = ExtResource("3_iu5ex")
-size_class = "small"
+[node name="Storage_radio" type="StaticBody3D" parent="." instance=ExtResource("5_jil2d")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0.1, -4.6)
 
-[node name="Decoy_small_x_06" type="StaticBody3D" parent="." unique_id=1021228011 instance=ExtResource("5_jil2d")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.1, 3.4)
-script = ExtResource("3_iu5ex")
-size_class = "small"
+; --- Flur (hallway) â€” corners only, center kept open for circulation ---
+[node name="Hall_bookcase" type="StaticBody3D" parent="." instance=ExtResource("7_xxpb8")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.4, 0.1, -2.4)
 
-[node name="Decoy_large_07" type="StaticBody3D" parent="." unique_id=1872293328 instance=ExtResource("9_yrcit")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.2, 0.1, -8.2)
-script = ExtResource("3_iu5ex")
+[node name="Hall_plant" type="StaticBody3D" parent="." instance=ExtResource("8_pssvn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0.1, -2.5)
 
-[node name="Decoy_medium_07" type="StaticBody3D" parent="." unique_id=652015927 instance=ExtResource("4_kn16g")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.7, 0.1, -5.6)
-script = ExtResource("3_iu5ex")
-size_class = "medium"
+[node name="Hall_cabinet" type="StaticBody3D" parent="." instance=ExtResource("17_cab")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0.1, 2.5)
 
-[node name="Decoy_small_07" type="StaticBody3D" parent="." unique_id=729209922 instance=ExtResource("10_gef5i")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.8, 0.1, -3.4)
-script = ExtResource("3_iu5ex")
-size_class = "small"
+[node name="Hall_lamp" type="StaticBody3D" parent="." instance=ExtResource("10_gef5i")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.5, 0.1, 2.5)
 
-[node name="Decoy_large_08" type="StaticBody3D" parent="." unique_id=1921452857 instance=ExtResource("7_xxpb8")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.2, 0.1, -2.2)
-script = ExtResource("3_iu5ex")
+; --- Kinderzimmer (kids room) ---
+[node name="Kids_bed" type="StaticBody3D" parent="." instance=ExtResource("22_beds")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.6, 0.1, 7.8)
 
-[node name="Decoy_medium_08" type="StaticBody3D" parent="." unique_id=1242465934 instance=ExtResource("8_pssvn")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.7, 0.1, 0.4)
-script = ExtResource("3_iu5ex")
-size_class = "medium"
+[node name="Kids_toybox" type="StaticBody3D" parent="." instance=ExtResource("9_yrcit")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.8, 0.1, 7.9)
 
-[node name="Decoy_small_08" type="StaticBody3D" parent="." unique_id=1883258770 instance=ExtResource("6_fa5lj")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.8, 0.1, 2.6)
-script = ExtResource("3_iu5ex")
-size_class = "small"
+[node name="Kids_cabinet" type="StaticBody3D" parent="." instance=ExtResource("17_cab")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.1, 8.3)
 
-[node name="Decoy_large_09" type="StaticBody3D" parent="." unique_id=1997693148 instance=ExtResource("7_xxpb8")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.2, 0.1, 3.8)
-script = ExtResource("3_iu5ex")
+[node name="Kids_books" type="StaticBody3D" parent="." instance=ExtResource("6_fa5lj")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.9, 0.1, 4.9)
 
-[node name="Decoy_medium_09" type="StaticBody3D" parent="." unique_id=1147743989 instance=ExtResource("4_kn16g")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.7, 0.1, 6.4)
-script = ExtResource("3_iu5ex")
-size_class = "medium"
+[node name="Kids_lamp" type="StaticBody3D" parent="." instance=ExtResource("10_gef5i")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.4, 0.1, 4.8)
 
-[node name="Decoy_small_09" type="StaticBody3D" parent="." unique_id=1545967723 instance=ExtResource("6_fa5lj")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.8, 0.1, 8.6)
-script = ExtResource("3_iu5ex")
-size_class = "small"
+; --- Bad (bathroom) ---
+[node name="Bath_tub" type="StaticBody3D" parent="." instance=ExtResource("13_tub")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 8.2, 0.1, -6.4)
+
+[node name="Bath_toilet" type="StaticBody3D" parent="." instance=ExtResource("14_wc")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.5, 0.1, -8.3)
+
+[node name="Bath_sink" type="StaticBody3D" parent="." instance=ExtResource("15_bsink")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.8, 0.1, -8.4)
+
+[node name="Bath_trashcan" type="StaticBody3D" parent="." instance=ExtResource("4_kn16g")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.4, 0.1, -8.4)
+
+[node name="Bath_plant" type="StaticBody3D" parent="." instance=ExtResource("8_pssvn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.0, 0.1, -4.6)
+
+; --- Schlafzimmer (bedroom) ---
+[node name="Bed_double" type="StaticBody3D" parent="." instance=ExtResource("16_bedd")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.95, 0.1, 0)
+
+[node name="Bed_nightstand" type="StaticBody3D" parent="." instance=ExtResource("17_cab")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.95, 0.1, -1.4)
+
+[node name="Bed_wardrobe" type="StaticBody3D" parent="." instance=ExtResource("7_xxpb8")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 8.4, 0.1, 2.3)
+
+[node name="Bed_lamp" type="StaticBody3D" parent="." instance=ExtResource("10_gef5i")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.4, 0.1, -2.4)
+
+[node name="Bed_books" type="StaticBody3D" parent="." instance=ExtResource("6_fa5lj")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.9, 0.1, 1.5)
+
+; --- Buero (office) ---
+[node name="Office_desk" type="StaticBody3D" parent="." instance=ExtResource("23_desk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.6, 0.1, 8.2)
+
+[node name="Office_chair" type="StaticBody3D" parent="." instance=ExtResource("24_cdesk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.6, 0.1, 7.3)
+
+[node name="Office_bookcase" type="StaticBody3D" parent="." instance=ExtResource("7_xxpb8")]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 8.4, 0.1, 6.5)
+
+[node name="Office_plant" type="StaticBody3D" parent="." instance=ExtResource("8_pssvn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.4, 0.1, 4.4)
+
+[node name="Office_books" type="StaticBody3D" parent="." instance=ExtResource("6_fa5lj")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.4, 0.1, 8.4)
 
 [node name="PlayerSpawnPoint" type="Marker3D" parent="." unique_id=199143237 groups=["player_spawn"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
@@ -901,14 +913,14 @@ environment = SubResource("Environment_house")
 ; Sun energy pulled down from the default 1.0: with the new ambient + per-room
 ; fill lights carrying the base exposure, the directional is now an accent, so
 ; the lit/dark contrast (the "hard shadow" edge) is much gentler. Cast shadows
-; stay off (default) — they are the expensive part on the web renderer and would
+; stay off (default) â€” they are the expensive part on the web renderer and would
 ; reintroduce the dark faces we are removing.
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1408365915]
 transform = Transform3D(0.8660254, 0.38302222, -0.32139382, 0, 0.64278764, 0.76604444, 0.5, -0.66341394, 0.5566704, 0, 8, 0)
 light_energy = 0.7
 
-; One dim, shadowless OmniLight per living room — analogous to the seeker room's
-; BoxLight — placed just under the 3 m wall top at each room centre. Lights the
+; One dim, shadowless OmniLight per living room â€” analogous to the seeker room's
+; BoxLight â€” placed just under the 3 m wall top at each room centre. Lights the
 ; walls and props from a second (overhead) direction so surfaces read from all
 ; sides. Shadowless omnis are cheap; each walled room exposes only its own light
 ; plus the sun to any prop, well under the compatibility per-object light cap.
