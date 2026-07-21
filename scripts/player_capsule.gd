@@ -18,8 +18,9 @@ extends CharacterBody3D
 ## FORMS: form_id names the current form (PlayerForms registry). Transforming
 ## swaps visuals + collision volume and scales the top speed (SPEC.md 9.2:
 ## slime 100 %, small 80 %, medium 60 %, large 40 % — see max_speed()); props
-## always spawn neutral white (SPEC.md 9.1). TEMPORARY debug keys until the
-## real selection UX exists: 1 = slime, 2 = small, 3 = medium, 4 = large.
+## always spawn neutral white (SPEC.md 9.1). Form keys: 1 = slime, 2 = small,
+## 3 = medium, 4 = large — each size key CYCLES through that class's forms on
+## repeated presses (_cycle_form), so the furniture set is browsable in-place.
 ## form_id replicates through the MultiplayerSynchronizer — on change plus
 ## spawn state, so every peer (late joiners included) shows the same form.
 ## Only the owning peer may transform itself; _set_form_id is the single
@@ -221,11 +222,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("form_slime"):
 		transform_to_slime()
 	elif event.is_action_pressed("form_small"):
-		transform_to_prop(PlayerForms.first_prop_of_size(PlayerForms.Size.SMALL))
+		_cycle_form(PlayerForms.Size.SMALL)
 	elif event.is_action_pressed("form_medium"):
-		transform_to_prop(PlayerForms.first_prop_of_size(PlayerForms.Size.MEDIUM))
+		_cycle_form(PlayerForms.Size.MEDIUM)
 	elif event.is_action_pressed("form_large"):
-		transform_to_prop(PlayerForms.first_prop_of_size(PlayerForms.Size.LARGE))
+		_cycle_form(PlayerForms.Size.LARGE)
 
 ## Paint-mode input, handled before everything else: LMB paints the own prop
 ## under the cursor (hold to drag a stroke), RMB-drag orbits the camera around
@@ -407,6 +408,26 @@ func _physics_process(delta: float) -> void:
 ## form's own top speed.
 func max_speed() -> float:
 	return WALK_SPEED * PlayerForms.speed_multiplier(form_id)
+
+## Browse the forms of one size class with its form key: each press of the
+## same key steps to the NEXT form of that class (feature/prop-set-matches-map),
+## so a hider can pick which piece of furniture to disguise as instead of being
+## stuck with a single placeholder per size. STATELESS on purpose — the next id
+## is derived from the current form_id, so there is nothing extra to replicate
+## and the choice survives a form change via the existing synchronizer. Pressing
+## a class key while in another class (or as slime) enters that class at index 0
+## (= first_prop_of_size, the old behavior). The eat-table/role gate still runs
+## in transform_to_prop, so a locked class simply stays put on its notice.
+func _cycle_form(size: int) -> void:
+	var ids := PlayerForms.prop_ids_of_size(size)
+	if ids.is_empty():
+		return
+	var idx := 0
+	if PlayerForms.size_of(form_id) == size:
+		var here := ids.find(form_id)
+		if here != -1:
+			idx = (here + 1) % ids.size()
+	transform_to_prop(ids[idx])
 
 ## Transform into a prop form (a PlayerForms.PROPS key). The prop spawns
 ## neutral white no matter what the slime looks like — SPEC.md 9.1's anti-P2W
@@ -750,8 +771,9 @@ static func _ensure_input_actions() -> void:
 		"move_back": [KEY_S, KEY_DOWN],
 		"move_left": [KEY_A, KEY_LEFT],
 		"move_right": [KEY_D, KEY_RIGHT],
-		# TEMPORARY Phase 3 debug keys — form selection by size class. The real
-		# unlock-driven selection UX arrives with the eat progression (SPEC.md 8).
+		# Form selection by size class; repeated presses of a size key cycle
+		# through that class's forms (_cycle_form). A richer radial/unlock UI
+		# is still open (SPEC.md 16) — this keeps selection keyboard-only.
 		"form_slime": [KEY_1],
 		"form_small": [KEY_2],
 		"form_medium": [KEY_3],

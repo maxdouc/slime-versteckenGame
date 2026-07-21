@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/props/white_form.gd" id="1_white_form"]
+[ext_resource type="PackedScene" path="res://assets/kenney/furniture_kit/lampSquareTable.glb" id="2_model"]
+
+[node name="FormLamp" type="Node3D"]
+script = ExtResource("1_white_form")
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.06, 0, 0.06)

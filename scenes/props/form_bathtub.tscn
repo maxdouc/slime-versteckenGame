@@ -1,0 +1,10 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/props/white_form.gd" id="1_white_form"]
+[ext_resource type="PackedScene" path="res://assets/kenney/furniture_kit/bathtub.glb" id="2_model"]
+
+[node name="FormBathtub" type="Node3D"]
+script = ExtResource("1_white_form")
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+transform = Transform3D(1.4286, 0, 0, 0, 1.4286, 0, 0, 0, 1.4286, -0.85, 0, 0.4)
