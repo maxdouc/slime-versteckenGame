@@ -25,14 +25,13 @@ const MeshUvLookup := preload("res://scripts/paint/mesh_uv_lookup.gd")
 static func sample_color(collider: Object, world_point: Vector3) -> Variant:
 	if collider == null or not (collider is Node):
 		return null
-	# Painted player props sample their own paint pixels.
+	# Painted player props sample their own paint pixels — on the exact part
+	# (mesh) the point lands on, so a multi-part form reads back the right color.
 	var painter = collider.get("painter")
 	if painter != null and painter.is_painted():
-		var prop_mesh: MeshInstance3D = painter.bound_mesh_instance()
-		if prop_mesh != null and is_instance_valid(prop_mesh):
-			var uv := MeshUvLookup.uv_at_world_point(prop_mesh, world_point)
-			if uv.x >= 0.0:
-				return painter.color_at_uv(uv)
+		var res = painter.world_point_to_target(world_point)
+		if int(res["target"]) >= 0:
+			return painter.color_at_uv(res["uv"], int(res["target"]))
 	var mesh_instance := _visible_mesh(collider)
 	if mesh_instance == null or mesh_instance.mesh == null:
 		return null
