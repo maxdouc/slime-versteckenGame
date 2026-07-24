@@ -7,10 +7,13 @@ extends Node
 ## node, which the player scene instances under the same path on every peer);
 ## no transport code — the Net seam stays untouched.
 ##
-## EVENTS: one int64 per action — type(2 bit) | uv.x(u16) | uv.y(u16) |
-## rgb(24 bit). The OWNER quantizes once at the source; every peer (owner
-## included, via call_local) applies the same DEQUANTIZED values through the
-## same code path, so all paint images stay bit-identical.
+## EVENTS: one int64 per action — target(5 bit) | type(2 bit) | uv.x(u16) |
+## uv.y(u16) | rgb(24 bit). `target` is the mesh index within a multi-part form
+## (prop_painter.gd traversal order — identical on every peer), so a stroke
+## lands on the same part everywhere; fill/clear leave it 0 (whole-form). The
+## OWNER quantizes once at the source; every peer (owner included, via
+## call_local) applies the same DEQUANTIZED values through the same code path,
+## so all paint images stay bit-identical.
 ##
 ## ORDERING: form changes travel via the MultiplayerSynchronizer, events via
 ## RPC — there is no cross-ordering guarantee between the two. The capsule's
@@ -62,12 +65,12 @@ func _ready() -> void:
 
 ## --- Owner-side entry points (the capsule's input paths call these) --------
 
-func local_stroke(uv: Vector2, color: Color) -> void:
+func local_stroke(uv: Vector2, color: Color, target := 0) -> void:
 	if not is_multiplayer_authority():
 		return
-	var event := encode_stroke(uv, color)
+	var event := encode_stroke(uv, color, target)
 	if event == _last_stroke_event:
-		return  # identical quantized stamp — repainting the same pixels
+		return  # identical quantized stamp on the same part — repainting pixels
 	_last_stroke_event = event
 	_broadcast(event)
 
@@ -134,7 +137,7 @@ func _apply_paint_event(epoch: int, event: int) -> void:
 		_capsule.paint_epoch = epoch  # event outran the synchronizer — wipe now
 	match decode_type(event):
 		EVENT_STROKE:
-			_capsule.painter.stamp_uv(decode_uv(event), decode_color(event))
+			_capsule.painter.stamp_uv(decode_uv(event), decode_color(event), decode_target(event))
 		EVENT_FILL:
 			_capsule.painter.fill(decode_color(event))
 		EVENT_CLEAR:
@@ -183,10 +186,13 @@ func _on_retry_timeout() -> void:
 
 ## --- Event encoding -----------------------------------------------------------
 
-static func encode_stroke(uv: Vector2, color: Color) -> int:
+static func encode_stroke(uv: Vector2, color: Color, target := 0) -> int:
 	var qu := clampi(roundi(uv.x * 65535.0), 0, 65535)
 	var qv := clampi(roundi(uv.y * 65535.0), 0, 65535)
-	return (EVENT_STROKE << 56) | (qu << 40) | (qv << 24) | _encode_rgb(color)
+	# target -> bits 58..62 (5 bits, 0..31), above type(56..57); bit 63 stays 0
+	# so every event is a non-negative int64.
+	var qt := clampi(target, 0, 31)
+	return (qt << 58) | (EVENT_STROKE << 56) | (qu << 40) | (qv << 24) | _encode_rgb(color)
 
 static func encode_fill(color: Color) -> int:
 	return (EVENT_FILL << 56) | _encode_rgb(color)
@@ -196,6 +202,11 @@ static func encode_clear() -> int:
 
 static func decode_type(event: int) -> int:
 	return (event >> 56) & 0x3
+
+## Mesh index within a multi-part form (prop_painter.gd target order). 0 for
+## single-mesh forms and for fill/clear events.
+static func decode_target(event: int) -> int:
+	return (event >> 58) & 0x1F
 
 static func decode_uv(event: int) -> Vector2:
 	return Vector2(((event >> 40) & 0xFFFF) / 65535.0, ((event >> 24) & 0xFFFF) / 65535.0)

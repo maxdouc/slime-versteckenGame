@@ -326,9 +326,9 @@ func _drain_paint_queue() -> void:
 	for screen_pos in _pending_paint:
 		var hit := _cursor_raycast(space, screen_pos)
 		if not hit.is_empty() and hit.collider == self:
-			var uv: Vector2 = painter.world_point_to_uv(hit.position)
-			if uv.x >= 0.0:
-				_paint_sync.local_stroke(uv, painter.brush_color)
+			var res: Dictionary = painter.world_point_to_target(hit.position)
+			if int(res["target"]) >= 0:
+				_paint_sync.local_stroke(res["uv"], painter.brush_color, int(res["target"]))
 	_pending_paint.clear()
 	if _eyedrop_pending:
 		_eyedrop_pending = false
@@ -521,22 +521,28 @@ func _apply_form() -> void:
 	var is_slime := form_id == PlayerForms.SLIME
 	_slime_visual.visible = is_slime
 	if is_slime:
-		painter.rebind_prop(null)
+		painter.rebind_meshes([])
 	else:
 		var prop: Node = load(PlayerForms.scene_path(form_id)).instantiate()
-		_prop_anchor.add_child(prop)
-		painter.rebind_prop(_find_prop_mesh(prop))
+		_prop_anchor.add_child(prop)  # add_child runs white_form._ready() first
+		painter.rebind_meshes(_prop_meshes(prop))
 	_collision.shape = PlayerForms.collision_shape(form_id)
 	_collision.position = PlayerForms.collision_origin(form_id)
 
-## The paintable surface of an instanced prop: its first MeshInstance3D. The
-## placeholder props have exactly one; a future multi-mesh prop would paint its
-## first mesh until the registry says otherwise.
-func _find_prop_mesh(prop: Node) -> MeshInstance3D:
-	if prop is MeshInstance3D:
-		return prop
-	var meshes := prop.find_children("*", "MeshInstance3D", true, false)
-	return meshes[0] if meshes.size() > 0 else null
+## Every paintable MeshInstance3D of an instanced form, in traversal order —
+## the SAME order (and filter: a real mesh resource) scripts/props/white_form.gd
+## whitens, so paintability and the white base stay deckungsgleich. Multi-part
+## Kenney furniture (pot + plant, bed + blanket) yields several; the placeholder
+## props yield one. The list index is the stable paint-target id (prop_painter/
+## paint_sync), identical on every peer because the scene tree is.
+func _prop_meshes(prop: Node) -> Array:
+	var out: Array = []
+	if prop is MeshInstance3D and prop.mesh != null:
+		out.append(prop)
+	for node in prop.find_children("*", "MeshInstance3D", true, false):
+		if node.mesh != null:
+			out.append(node)
+	return out
 
 ## Feeding (SPEC.md 7): hold E for 1 s next to a sleeping NPC — hiders only,
 ## PREP only. This runs on the OWNING peer: it tracks the hold and the slurp
@@ -591,16 +597,18 @@ func apply_splatter_spray(global_hit: Vector3, seed_value: int) -> void:
 		return
 	if _game_state != null and not _game_state.is_alive(get_multiplayer_authority()):
 		return
-	var center_uv: Vector2 = painter.world_point_to_uv(global_hit)
-	if center_uv.x < 0.0:
+	var spray: Dictionary = painter.world_point_to_target(global_hit)
+	var target := int(spray["target"])
+	if target < 0:
 		return
+	var center_uv: Vector2 = spray["uv"]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
-	_paint_sync.local_stroke(center_uv, SPLATTER_SPRAY_COLOR)
+	_paint_sync.local_stroke(center_uv, SPLATTER_SPRAY_COLOR, target)
 	for _i in SPLATTER_SPRAY_STAMPS - 1:
 		var jitter := Vector2(rng.randf_range(-0.08, 0.08), rng.randf_range(-0.08, 0.08))
 		var uv := (center_uv + jitter).clamp(Vector2.ZERO, Vector2.ONE)
-		_paint_sync.local_stroke(uv, SPLATTER_SPRAY_COLOR)
+		_paint_sync.local_stroke(uv, SPLATTER_SPRAY_COLOR, target)
 
 ## Place a clone at the current spot (SPEC.md 10): a static copy of the
 ## current form including its paint. The owner snapshots its own compacted
