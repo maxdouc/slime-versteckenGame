@@ -1,3 +1,108 @@
+# ⚠️ POST-PLAYTEST OVERRIDES — Variante 1.2 · Team-Beschluss 29.07.2026
+
+Dieser Block steht **oberhalb** des bisherigen Inhalts. Bei Widerspruch mit
+älteren Abschnitten gilt zuerst dieser Variante-1.2-Block, danach der bestehende
+Web-First-Override v1.1 und zuletzt der Originaltext v1.0. Der detaillierte
+aktive Bauplan steht in `planning/POST_PLAYTEST_BUILD_PLAN_V1_2.md`.
+
+## 1. Einordnung
+
+- Der aktive Entwicklungsblock heißt **Post-Playtest Build Plan — Variante 1.2**.
+- Web/HTML5 bleibt die aktuelle Plattform. Steam bleibt der spätere Plattform-Port V2.
+- Die bestehende technische V1-Foundation bleibt die Basis; Variante 1.2 stabilisiert und erweitert das Spiel nach dem ersten vollständigen internen Playtest.
+
+## 2. Aktive Map
+
+- Das Wohnhaus wird als aktive Hauptmap durch ein **zweistöckiges Casino** ersetzt.
+- Das Casino wird ab Beginn von Variante 1.2 als Entwicklungs- und Testumgebung verwendet.
+- Die komplette aktive Map inklusive Architektur, Materialien, Möbeln und Dekoration wird auf ein neues, einheitliches und projektkontrolliertes Asset-Ökosystem umgestellt.
+- Das Wohnhaus darf als historische Test-/Referenzmap archiviert bleiben, ist aber nicht mehr die aktive Produktionsmap.
+
+## 3. Props, Scanner und Asset-Vertrag
+
+- Verstecker erhalten einen Scanner, mit dem sie freigegebene Casino-Objekte anvisieren und als Verwandlungsform auswählen können.
+- „Jedes Objekt“ bedeutet jedes **registrierte, freigegebene und gameplay-kompatible** Objekt; reine Dekoration ohne gültige Paint-, Collision-, Clone- und Network-Definition ist nicht transformierbar.
+- Dasselbe kanonische Prop-Asset soll für Map-Dekoration, Scanner, Transformation, Bemalung, Klon, Kollision und Netzwerkzustand verwendet werden.
+- Jedes transformierbare Objekt benötigt eine stabile Prop-ID, Größenklasse, Freischaltstufe, saubere UVs/Materialien, definierte Kollision, korrekten Pivot, Paint-Kompatibilität, Clone-Kompatibilität, Climb-Kompatibilität und Web-Performance-Freigabe.
+- Die aktive Casino-Map verwendet keine Mischung unvereinbarer Asset-Stile.
+
+## 4. NPC-Slimes
+
+- NPC-Slimes schlafen nicht mehr stationär.
+- Sie bewegen sich während der Prep-Phase und **fliehen aktiv vor Versteckern**.
+- Verstecker müssen sie verfolgen, fangen und anschließend essen.
+- NPC-Bewegung, Fangzustand und Belohnung sind host-autoritativ.
+- Ein NPC kann nur einmal von genau einem Verstecker gewertet werden.
+- Nicht gefressene NPCs verschwinden weiterhin beim Start der Jagdphase.
+- Die bestehende kumulative Fress-Progression bleibt bestehen, bis ein eigener Balancebeschluss sie ändert.
+
+## 5. Kamera und Sucher
+
+- Der Sucher spielt in First Person.
+- Der Sucher sieht eine Paintball-Gun als First-Person-Waffenmodell; andere Spieler sehen ein synchrones World-Model.
+- Das normale Verstecker-Gameplay bleibt Third Person.
+- Normales Gameplay und Paint-Modus unterstützen kontrolliertes Rein- und Rauszoomen mit Kollisionsschutz und definierten Min-/Max-Grenzen.
+
+## 6. Bewegung, Springen und Klettern
+
+- Verstecker erhalten eine Sprungmechanik. Die erste verbindliche Umsetzung gilt für den Slime; Prop-Springen benötigt einen separaten Teambeschluss.
+- Der Slime und alle freigegebenen verwandelten Props können Wände hochklettern.
+- Der Slime erhält beim Klettern eine flachere, hängende Darstellung/Animation.
+- Props behalten beim Klettern ihre Form und Bemalung und richten sich kontrolliert an der Oberfläche aus.
+- Wandklettern darf keine Map-Flucht, Wand-/Boden-Teleports, ungültigen Eckenwechsel oder Netzwerkdesynchronisierung ermöglichen.
+- Deckenklettern ist nicht automatisch beschlossen und bleibt getrennt zu entscheiden.
+
+## 7. Verwandlungssicherheit
+
+- Vor jeder Verwandlung prüft der Host, ob die Zielkollision an der Position Platz hat.
+- Eine zu große Form darf den Spieler nicht durch Boden, Wand, Decke oder Ecke verschieben.
+- Gibt es keinen sicheren Platz in einem kleinen erlaubten Suchradius, wird die Verwandlung abgelehnt und verständlich gemeldet.
+- Der Scanner darf die bestehende Freischaltlogik der Größenklassen nicht umgehen.
+
+## 8. Klone
+
+- Klonladungen sind endlich und host-autoritativ.
+- Eine vollständige Klon-/Teleport-Nutzung verbraucht exakt eine durch Fressen verdiente Ladung.
+- Der Klon speichert die exakte Form, vollständige Bemalung, Position und Rotation.
+- Ein neu platzierter Klon bleibt zunächst pending, unsichtbar und ohne Kollision, bis der Besitzer den Aktivierungsradius verlassen hat; dann erscheint er am gespeicherten Punkt.
+- Ungültige, abgebrochene oder doppelte Aktionen dürfen keine zusätzlichen Klonladungen erzeugen.
+- Todes-Link und Verbrauch beim Tausch-Teleport bleiben bestehen.
+
+## 9. Rundenreset und Testmodus
+
+- Beim Start jeder Runde werden alle Spieler host-autoritativ vollständig in den Slime-Grundzustand zurückgesetzt: Form, Paint, Klone, Klonladungen, Fressfortschritt, Kollision, Kamera/Paint-Modus, Rotation/Drip und weitere rundenbezogene Zustände.
+- Eine Ein-Spieler-Runde bleibt nur als ausdrücklich aktivierter Developer-/Testmodus erlaubt.
+- Im Produktionsmodus gilt eine konfigurierbare Mindestspielerzahl.
+
+## 10. Raumwechsel und Zerfließen
+
+- Die bestehende Fünf-Sekunden-Regel zur endgültigen Bestätigung eines neuen Raums bleibt bestehen.
+- Beim glaubwürdigen Betreten eines anderen Raums muss eine aktive Zerfließ-/Drip-Gefahr jedoch sofort pausieren oder sichtbar zurückgehen.
+- Bleibt der Spieler fünf Sekunden im neuen Raum, wird der Raumwechsel bestätigt und der Timer korrekt zurückgesetzt.
+- Kehrt er vorher zurück oder pendelt an der Schwelle, darf dies keinen kostenlosen vollständigen Reset erzeugen.
+
+## 11. Build-/Protokoll-Kompatibilität
+
+- Lobby und Testbuild zeigen mindestens Build-Hash und Netzwerk-Protokollversion.
+- Clients mit inkompatibler Protokollversion dürfen keine gemeinsame Runde starten.
+
+## 12. Aktive Baureihenfolge
+
+Die detaillierte Reihenfolge steht im `Post-Playtest Build Plan — Variante 1.2`
+(`planning/POST_PLAYTEST_BUILD_PLAN_V1_2.md`):
+
+1. Plan-/Spec-Lock, Build-Version und Casino-Graybox.
+2. Kritische Gameplay-Fixes im Casino.
+3. Einheitliche Custom-Prop-/Paint-/Clone-Pipeline.
+4. Scanner-Verwandlungssystem.
+5. Kamera/Zoom und First-Person-Sucher.
+6. Springen und Wandklettern für Slime und Props.
+7. Aktiv fliehende NPC-Slimes.
+8. Vollständige Casino-Asset- und Dekorationsproduktion.
+9. UI, Audio, Performance, Mehrspieler-Regression und neuer Web-Playtest-Build.
+
+---
+
 # ⚠️ WEB-FIRST OVERRIDES (v1.1 · 08.07.2026 · Team-Beschluss)
 
 Diese Overrides haben Vorrang vor dem Originaltext darunter. Der Originaltext

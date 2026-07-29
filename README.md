@@ -8,6 +8,23 @@ the spec wins. This README covers setup and process only.
 
 ---
 
+## Current development plan
+
+The active development block is **Variante 1.2** — the post-playtest expansion
+and stabilization block. Full plan (Phases 10–18, owners intentionally `TBD`):
+**[`planning/POST_PLAYTEST_BUILD_PLAN_V1_2.md`](planning/POST_PLAYTEST_BUILD_PLAN_V1_2.md)**.
+
+- The two-floor **Casino** replaces the House as the active target map.
+- The active map and its decoration move to one project-controlled asset
+  ecosystem (the old Kenney House dressing is not the active production map).
+- **Web-first stays; Steam stays later V2.** No GodotSteam in Variante 1.2.
+
+The historical Phase 0–9 build order below and the completed-phase log in
+`planning/BUILD_PLAN.md` remain as V1-foundation history. For anything about
+current or upcoming work, the Variante 1.2 plan takes precedence.
+
+---
+
 ## Setup (each dev, once)
 
 1. Install **Godot 4.7** (standard, not .NET) — https://godotengine.org

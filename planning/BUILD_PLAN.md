@@ -9,6 +9,21 @@ README.md explains setup and architecture.
 CLAUDE.md explains how Claude Code must work.
 This file explains the development order, branch plan, status, and task ownership.
 
+## Active plan pointer (read first)
+
+- **Phases 0–9 in this file are the completed V1 foundation / history.** They
+  remain preserved here — including their evidence — and must not be deleted or
+  reset.
+- **The active plan for Phase 10 onward is
+  `planning/POST_PLAYTEST_BUILD_PLAN_V1_2.md` (Post-Playtest Build Plan —
+  Variante 1.2).** It replaces the House with a two-floor Casino as the active
+  map and moves the active map/decoration to a project-controlled asset
+  ecosystem. Web-first stays; Steam stays later V2.
+- **Phase 10 is `Next`.** No implementation owners are assigned yet — every new
+  Variante 1.2 branch stays `TBD` until Travis and Maxim assign them together.
+- SPEC precedence: the Variante 1.2 override block at the top of `SPEC.md` wins,
+  then the Web-First override v1.1, then the original v1.0.
+
 ## Team members
 
 - Travis = project partner, works on his own PC.
@@ -115,6 +130,11 @@ This file is ignored by git and must not be committed.
 
 ### Next
 
+- **Active plan: Post-Playtest Build Plan — Variante 1.2
+  (`planning/POST_PLAYTEST_BUILD_PLAN_V1_2.md`). Phase 10 (Plan Lock, Version
+  Guard and Casino Foundation) is the next planned work. Owners of all new
+  implementation branches remain `TBD` pending the Travis + Maxim assignment
+  session.**
 - Post-foundation deployment task, BEFORE any external tester wave:
   public WSS/TLS signaling hosting + TURN-relay decision.
 - Community playtest rollout per planning/PLAYTEST_PROTOCOL.md
