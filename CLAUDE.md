@@ -33,8 +33,9 @@ Use these files as project truth:
 
 1. SPEC.md = gameplay and design truth.
 2. README.md = setup, architecture summary, and process rules.
-3. planning/BUILD_PLAN.md = development phases, branch order, task status, and team assignments.
-4. Current code = actual implemented state.
+3. planning/BUILD_PLAN.md = historical master index of development phases (0–9), branch order, task status, and team assignments.
+4. planning/POST_PLAYTEST_BUILD_PLAN_V1_2.md = the active plan for Phase 10 onward (Post-Playtest Build Plan — Variante 1.2).
+5. Current code = actual implemented state.
 
 If code and SPEC.md disagree, SPEC.md wins unless the user explicitly says the team changed the spec.
 
